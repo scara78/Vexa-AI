@@ -1,27 +1,66 @@
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote_plus
 import json, time, random, collections, base64
 import requests as req
 
-UA            = "Mozilla/5.0"
-HORDE_API     = "https://stablehorde.net/api/v2"
-ANON_KEY      = "0000000000"
-MAX_REQUESTS  = 10
-RATE_WINDOW   = 60
-POLL_INTERVAL = 3
-POLL_TIMEOUT  = 120
+UA           = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+CLIENT_AGENT = "vexa-api:1.0:github.com/vexa-ai"
+HORDE_API    = "https://aihorde.net/api/v2"
+ANON_KEY     = "0000000000"
+MAX_REQUESTS   = 10
+RATE_WINDOW    = 60
+POLL_INTERVAL  = 3
+POLL_TIMEOUT   = 120
 _rate_store: dict = {}
 
+_model_cache: dict = {"names": set(), "ts": 0}
+MODEL_CACHE_TTL = 300
+
+def _get_live_models() -> set:
+    """Return set of model names currently served by online AI Horde workers."""
+    now = time.time()
+    if _model_cache["names"] and now - _model_cache["ts"] < MODEL_CACHE_TTL:
+        return _model_cache["names"]
+    try:
+        r = req.get(
+            f"{HORDE_API}/workers?type=image",
+            headers={"User-Agent": UA, "Client-Agent": CLIENT_AGENT, "apikey": ANON_KEY},
+            timeout=10,
+        )
+        r.raise_for_status()
+        names = set()
+        for w in r.json():
+            if w.get("online"):
+                names.update(w.get("models", []))
+        if names:
+            _model_cache["names"] = names
+            _model_cache["ts"]    = now
+    except Exception:
+        pass
+    return _model_cache["names"]
+
 RESOLUTIONS = {
-    "768x768": (768, 768),
-    "512x768": (512, 768),
-    "768x512": (768, 512),
-    "512x512": (512, 512),
+    "512x512":   (512,  512),
+    "512x768":   (512,  768),
+    "768x512":   (768,  512),
+    "768x768":   (768,  768),
+    "640x960":   (640,  960),
+    "960x640":   (960,  640),
+    "1024x576":  (1024, 576),
+    "576x1024":  (576,  1024),
+    "832x1216":  (832,  1216),
+    "1216x832":  (1216, 832),
+    "1024x1024": (1024, 1024),
 }
+DEFAULT_RESOLUTION = "512x512"
 
-CFG_MIN, CFG_MAX     = 1, 20
-STEPS_MIN, STEPS_MAX = 1, 50
+DEFAULT_MODEL = "Deliberate"
 
+SAMPLERS = [
+    "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",
+    "k_dpmpp_2m", "k_dpmpp_sde", "DDIM", "k_heun",
+]
+DEFAULT_SAMPLER = "k_euler_a"
 
 def _is_rate_limited(ip: str) -> bool:
     now = time.time()
@@ -46,9 +85,9 @@ def _get_ip(h) -> str:
 def _respond(h, status: int, data: dict):
     body = json.dumps({"success": status < 400, **data}, ensure_ascii=False).encode()
     h.send_response(status)
-    h.send_header("Content-Type", "application/json")
+    h.send_header("Content-Type",   "application/json")
     h.send_header("Content-Length", str(len(body)))
-    h.send_header("Access-Control-Allow-Origin", "*")
+    h.send_header("Access-Control-Allow-Origin",  "*")
     h.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     h.send_header("Access-Control-Allow-Headers", "Content-Type")
     h.end_headers()
@@ -65,24 +104,25 @@ def _cancel_job(job_id: str):
     except Exception:
         pass
 
-
-def _submit_job(prompt: str, negative_prompt: str, w: int, h: int,
-                num: int, model: str, cfg_scale: float, steps: int) -> str:
+def _generate(prompt: str, negative_prompt: str, w: int, h: int, num: int,
+              model: str, sampler: str, steps: int, cfg: float, seed: int) -> list:
     payload = {
-        "prompt": prompt + (f" ### {negative_prompt}" if negative_prompt else ""),
+        "prompt":   f"{prompt} ### {negative_prompt}" if negative_prompt else prompt,
         "params": {
             "width":        w,
             "height":       h,
             "n":            num,
             "steps":        steps,
-            "sampler_name": "k_euler",
-            "cfg_scale":    cfg_scale,
-            "seed":         str(random.randint(0, 2**31)),
+            "sampler_name": sampler,
+            "cfg_scale":    cfg,
+            "seed":         str(seed),
         },
-        "models": [model],
-        "r2":     True,
-        "shared": False,
+        "models":  [model],
+        "r2":      True,
+        "shared":  False,
+        "slow_workers": True,
     }
+
     r = req.post(
         f"{HORDE_API}/generate/async",
         json=payload,
@@ -90,15 +130,12 @@ def _submit_job(prompt: str, negative_prompt: str, w: int, h: int,
         timeout=15,
     )
     r.raise_for_status()
-    resp_json = r.json()
-    job_id = resp_json.get("id")
+    job_id = r.json().get("id")
     if not job_id:
-        raise RuntimeError(f"No job ID returned: {resp_json}")
-    return job_id
+        raise RuntimeError(f"No job ID returned: {r.text[:200]}")
 
-
-def _poll_and_fetch(job_id: str) -> list:
-    deadline = time.time() + POLL_TIMEOUT
+    queue_pos = None
+    deadline  = time.time() + POLL_TIMEOUT
     while time.time() < deadline:
         time.sleep(POLL_INTERVAL)
         check = req.get(
@@ -106,11 +143,22 @@ def _poll_and_fetch(job_id: str) -> list:
             headers={"apikey": ANON_KEY, "User-Agent": UA},
             timeout=10,
         ).json()
+
+        queue_pos = check.get("queue_position")
+
         if not check.get("is_possible", True):
             _cancel_job(job_id)
-            raise RuntimeError("No workers available for this model. Check /models for valid image_models.")
-        if check.get("done") or check.get("faulted"):
+            raise RuntimeError(
+                f"No workers available for model '{model}'. "
+                "Check /models for models with active workers."
+            )
+        if check.get("faulted"):
+            raise RuntimeError(f"Job faulted: {check}")
+        if check.get("done"):
             break
+    else:
+        _cancel_job(job_id)
+        raise RuntimeError(f"Timed out after {POLL_TIMEOUT}s (last queue position: {queue_pos})")
 
     status_r = req.get(
         f"{HORDE_API}/generate/status/{job_id}",
@@ -121,85 +169,139 @@ def _poll_and_fetch(job_id: str) -> list:
     images = []
     for gen in status_r.get("generations", []):
         img_url = gen.get("img", "")
-        b64 = None
-        try:
-            img_r = req.get(img_url, timeout=15)
-            b64 = base64.b64encode(img_r.content).decode()
-        except Exception:
-            pass
+        b64     = None
+        if img_url:
+            try:
+                img_r = req.get(img_url, timeout=20)
+                if img_r.status_code == 200:
+                    b64 = base64.b64encode(img_r.content).decode()
+            except Exception:
+                pass
         images.append({
-            "url":    img_url,
             "b64":    b64,
-            "seed":   gen.get("seed", ""),
+            "url":    img_url,
+            "seed":   gen.get("seed", str(seed)),
+            "model":  gen.get("model", model),
             "worker": gen.get("worker_name", ""),
         })
     return images
 
+def _parse_qs_params(raw_path: str) -> dict:
+    params = parse_qs(urlparse(raw_path).query, keep_blank_values=True)
 
-def _parse_params(params: dict) -> tuple:
-    prompt          = (params.get("q") or params.get("prompt") or [None])[0]
-    negative_prompt = (params.get("negative_prompt") or params.get("negative") or [""])[0]
-    resolution      = (params.get("resolution") or ["512x512"])[0]
-    model           = (params.get("model") or ["Deliberate"])[0]
+    def _get(keys, default=""):
+        for k in keys:
+            v = params.get(k)
+            if v:
+                return unquote_plus(v[0])
+        return default
+
+    prompt          = _get(["q", "prompt"], None)
+    negative_prompt = _get(["negative_prompt", "negative"], "")
+    resolution      = _get(["resolution"], DEFAULT_RESOLUTION)
+    model           = _get(["model"], DEFAULT_MODEL)
+    sampler         = _get(["sampler"], DEFAULT_SAMPLER)
 
     try:
-        num = int((params.get("num") or params.get("numImages") or ["1"])[0])
-        num = max(1, min(num, 4))
+        num = max(1, min(int(_get(["num", "numImages"], "1")), 4))
     except (ValueError, TypeError):
         num = 1
-
     try:
-        cfg_scale = float((params.get("cfg_scale") or params.get("guidance_scale") or ["7"])[0])
-        cfg_scale = max(CFG_MIN, min(cfg_scale, CFG_MAX))
+        steps = max(10, min(int(_get(["steps"], "25")), 50))
     except (ValueError, TypeError):
-        cfg_scale = 7.0
-
+        steps = 25
     try:
-        steps = int((params.get("steps") or ["20"])[0])
-        steps = max(STEPS_MIN, min(steps, STEPS_MAX))
+        cfg = max(1.0, min(float(_get(["cfg", "cfg_scale"], "7.0")), 20.0))
     except (ValueError, TypeError):
-        steps = 20
+        cfg = 7.0
+    try:
+        seed = int(_get(["seed"], str(random.randint(0, 2**31))))
+    except (ValueError, TypeError):
+        seed = random.randint(0, 2**31)
 
-    return prompt, negative_prompt, resolution, model, num, cfg_scale, steps
+    return {
+        "prompt":          prompt,
+        "negative_prompt": negative_prompt,
+        "resolution":      resolution,
+        "model":           model or DEFAULT_MODEL,
+        "sampler":         sampler if sampler in SAMPLERS else DEFAULT_SAMPLER,
+        "num":             num,
+        "steps":           steps,
+        "cfg":             cfg,
+        "seed":            seed,
+    }
 
 
-def _parse_body(body: dict) -> tuple:
-    flat = {k: [str(v)] if not isinstance(v, list) else v for k, v in body.items()}
-    return _parse_params(flat)
+def _parse_body(body: dict) -> dict:
+    m = body.get("model", DEFAULT_MODEL)
+    s = body.get("sampler", DEFAULT_SAMPLER)
+    try:
+        steps = max(10, min(int(body.get("steps", 25)), 50))
+    except (ValueError, TypeError):
+        steps = 25
+    try:
+        cfg = max(1.0, min(float(body.get("cfg_scale", body.get("cfg", 7.0))), 20.0))
+    except (ValueError, TypeError):
+        cfg = 7.0
+    try:
+        seed = int(body.get("seed", random.randint(0, 2**31)))
+    except (ValueError, TypeError):
+        seed = random.randint(0, 2**31)
 
+    return {
+        "prompt":          body.get("prompt") or body.get("q"),
+        "negative_prompt": body.get("negative_prompt") or body.get("negative") or "",
+        "resolution":      body.get("resolution", DEFAULT_RESOLUTION),
+        "model":           m or DEFAULT_MODEL,
+        "sampler":         s if s in SAMPLERS else DEFAULT_SAMPLER,
+        "num":             max(1, min(int(body.get("num") or body.get("numImages") or 1), 4)),
+        "steps":           steps,
+        "cfg":             cfg,
+        "seed":            seed,
+    }
 
-def _run(h, prompt, negative_prompt, resolution, model, num, cfg_scale, steps):
-    if not prompt or not prompt.strip():
+def _run(h, args: dict):
+    prompt = args.get("prompt")
+    if not prompt or not str(prompt).strip():
         _respond(h, 400, {"error": "Missing required parameter: q or prompt"})
         return
 
-    prompt          = prompt.replace("+", " ").strip()[:500]
-    negative_prompt = (negative_prompt or "").replace("+", " ").strip()[:300]
+    prompt          = str(prompt).strip()[:1000]
+    negative_prompt = str(args.get("negative_prompt") or "").strip()[:500]
+    resolution      = args.get("resolution", DEFAULT_RESOLUTION)
+    model           = args.get("model",      DEFAULT_MODEL)
+    sampler         = args.get("sampler",    DEFAULT_SAMPLER)
+    num             = args.get("num",        1)
+    steps           = args.get("steps",      25)
+    cfg             = args.get("cfg",        7.0)
+    seed            = args.get("seed",       random.randint(0, 2**31))
     w, h_px         = RESOLUTIONS.get(resolution, (512, 512))
+
+    live_models = _get_live_models()
+    model_warning = None
+    if live_models and model not in live_models:
+        model_warning = f"Model '{model}' has no active workers right now. Request may queue or fail."
 
     t0 = time.time()
     try:
-        job_id = _submit_job(prompt, negative_prompt, w, h_px, num, model, cfg_scale, steps)
-        images = _poll_and_fetch(job_id)
-        if not images:
-            _respond(h, 502, {"error": "Generation completed but returned no images. Try again."})
-            return
-        _respond(h, 200, {
-            "prompt":          prompt,
-            "negative_prompt": negative_prompt or None,
-            "model":           model,
-            "resolution":      resolution,
-            "cfg_scale":       cfg_scale,
-            "steps":           steps,
-            "num_images":      num,
-            "images":          images,
-            "elapsed_ms":      round((time.time() - t0) * 1000),
-        })
-    except RuntimeError as e:
-        _respond(h, 502, {"error": str(e)})
+        images = _generate(prompt, negative_prompt, w, h_px, num, model, sampler, steps, cfg, seed)
     except Exception as e:
-        _respond(h, 500, {"error": f"Internal error: {e}"})
+        _respond(h, 502, {"error": str(e)})
+        return
 
+    _respond(h, 200, {
+        "prompt":          prompt,
+        "negative_prompt": negative_prompt or None,
+        "model":           model,
+        "resolution":      resolution,
+        "sampler":         sampler,
+        "steps":           steps,
+        "cfg_scale":       cfg,
+        "num_images":      len(images),
+        "images":          images,
+        "elapsed_ms":      round((time.time() - t0) * 1000),
+        **({"warning": model_warning} if model_warning else {}),
+    })
 
 class handler(BaseHTTPRequestHandler):
     def log_message(self, *args): pass
@@ -215,9 +317,7 @@ class handler(BaseHTTPRequestHandler):
         if _is_rate_limited(_get_ip(self)):
             _respond(self, 429, {"error": "Rate limit exceeded"})
             return
-        params = parse_qs(urlparse(self.path).query)
-        args = _parse_params(params)
-        _run(self, *args)
+        _run(self, _parse_qs_params(self.path))
 
     def do_POST(self):
         if _is_rate_limited(_get_ip(self)):
@@ -229,5 +329,4 @@ class handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             _respond(self, 400, {"error": "Invalid JSON body"})
             return
-        args = _parse_body(body)
-        _run(self, *args)
+        _run(self, _parse_body(body))

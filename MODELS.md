@@ -4,7 +4,7 @@
 GET https://vexa-ai.vercel.app/models
 ```
 
-Returns all available text models and the top 20 image models from Stable Horde. Cached for 5 minutes per serverless instance.
+Returns all available text models fetched live from Pollinations.AI, and live image models from Stable Horde. Cached for 5 minutes per serverless instance.
 
 ---
 
@@ -15,92 +15,77 @@ Returns all available text models and the top 20 image models from Stable Horde.
   "success": true,
   "default": "openai",
   "models": {
+    "openai-fast": {
+      "label": "GPT-OSS 20B Reasoning LLM (OVH)",
+      "provider": "OpenAI"
+    },
     "openai": {
       "label": "GPT-4o",
       "provider": "OpenAI"
     },
-    "openai-large": {
-      "label": "GPT-4o Large",
-      "provider": "OpenAI"
-    },
     "llama": {
-      "label": "Llama 3 (fastest)",
+      "label": "Llama 3",
       "provider": "Meta"
     }
   },
   "image_models": [
-    { "name": "Deliberate",       "count": 4, "queued": 0 },
-    { "name": "Dreamshaper",      "count": 3, "queued": 0 },
-    { "name": "stable_diffusion", "count": 6, "queued": 0 }
+    { "name": "stable_diffusion", "count": 6 },
+    { "name": "Deliberate",       "count": 4 },
+    { "name": "Dreamshaper",      "count": 3 }
   ]
 }
 ```
-
-### Text model fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `label` | string | Human-readable display name |
-| `provider` | string | Company or team behind the model |
-
-### Image model fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Exact model name — pass this to `/image?model=` or the POST body |
-| `count` | number | Number of active workers serving this model right now |
-| `queued` | number | Pixel-based queue value from Stable Horde (not job count — see note below) |
 
 ---
 
 ## Text Models
 
-The API always returns a curated base list of 15 models. If the live Pollinations.AI `/models` endpoint returns more than one model, any new models not already in the base list are merged in automatically.
+Text models are fetched **fully dynamically** from the live Pollinations.AI endpoint — there is no hardcoded list. The set of available models will vary over time as Pollinations adds or removes them.
 
-| Model ID | Provider | Notes |
-|----------|----------|-------|
-| `openai` | OpenAI | GPT-4o — **default** |
-| `openai-large` | OpenAI | GPT-4o Large |
-| `openai-reasoning` | OpenAI | o1 reasoning model |
-| `openai-fast` | OpenAI | GPT-OSS fast variant |
-| `mistral` | Mistral AI | Mistral latest |
-| `mistral-roblox` | Mistral AI | Mistral (Roblox-hosted) |
-| `llama` | Meta | Fastest option |
-| `llama-scaleway` | Meta | Llama (Scaleway-hosted) |
-| `deepseek` | DeepSeek | DeepSeek V3 |
-| `deepseek-r1` | DeepSeek | Reasoning variant |
-| `claude-hybridspace` | Anthropic | Claude hybrid |
-| `searchgpt` | OpenAI | Web-search enabled |
-| `gemini` | Google | Gemini 2.0 Flash |
-| `phi` | Microsoft | Phi-4 |
-| `qwen-coder` | Alibaba | Qwen Coder |
+Use `GET /models` to discover what's currently available before making requests to `/query` or `/chat`. If a requested model ID is not in the live list, the API falls back to the default model.
 
-> This table reflects the curated base list. Additional models may appear if Pollinations.AI adds new ones — always use `/models` for the live list.
+### Text model fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | string | Human-readable display name or description |
+| `provider` | string | Company behind the model (inferred from model ID if not provided by upstream) |
+
+### Default model
+
+The `default` field in the response contains the model ID that will be used when no `model` param is specified. This is also sourced dynamically from Pollinations and may change.
 
 ---
 
 ## Image Models
 
-Fetched live from Stable Horde, sorted by active worker count (highest first). Top 20 are returned. `Deliberate` is used as the default.
+Fetched live from Stable Horde, filtered to models with at least 1 active worker, sorted by worker count descending. Top 30 returned.
 
-Pass the exact `name` string to `/image?model=` or the `model` field in a POST body.
+Pass the exact `name` string to `/image?model=` or the `model` POST body field.
 
-> If you pass a model with no active workers (`count: 0`), the request fails immediately with a `502` rather than sitting in queue. Always check `count > 0` before choosing a model.
+### Image model fields
 
-> **Note on `queued` values:** Stable Horde reports `queued` in pixels (width × height × jobs), not job count. Large numbers like `719659008` are normal and do not indicate a problem. Divide by `262144` (512×512) to get an approximate job count.
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Exact model name to pass to `/image` |
+| `count` | number | Active workers serving this model right now |
+
+> **Worker availability:** All models in the response have `count >= 1`. Higher count means more capacity and faster responses.
 
 ---
 
 ## Caching
 
-Both text and image model lists are cached for **5 minutes** per serverless instance. Vercel may spin up multiple instances so different requests may occasionally see slightly different cached states.
+Both text and image model lists are cached for **5 minutes** per serverless instance. Vercel may spin up multiple instances so cache state can vary slightly between requests.
 
 ---
 
 ## Errors
 
-The `/models` endpoint never returns an error response — if the live Pollinations.AI endpoint is unreachable, the curated base list is returned instead. Image models fall back to an empty array if Stable Horde is unreachable.
+The `/models` endpoint never returns an error response. If upstream sources are unreachable:
+- Text models fall back to the last successful cache, or `{}` on a cold start
+- Image models fall back to `[]`
 
 ```json
-{ "success": true, "default": "openai", "models": { ... }, "image_models": [] }
+{ "success": true, "default": "openai", "models": {}, "image_models": [] }
 ```

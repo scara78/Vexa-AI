@@ -3,7 +3,7 @@
 Free REST API for text and image generation. No account, no API key, no setup.
 
 - **Text** — Multiple AI models via [Pollinations.AI](https://pollinations.ai)
-- **Images** — Community GPU cluster via [Stable Horde](https://stablehorde.net)
+- **Images** — Community GPU cluster via [Stable Horde](https://aihorde.net)
 
 ```
 BASE_URL = https://vexa-ai.vercel.app

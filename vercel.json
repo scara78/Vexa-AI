@@ -42,7 +42,7 @@
     },
     {
       "src": "/",
-      "dest": "/api/index.html"
+      "dest": "/api/index.py"
     },
     {
       "src": "/(.*)",

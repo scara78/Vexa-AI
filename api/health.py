@@ -4,7 +4,7 @@ import requests as req
 
 POLLINATIONS_URL  = "https://text.pollinations.ai/openai"
 POLLINATIONS_MODELS_URL = "https://text.pollinations.ai/models"
-HORDE_API = "https://stablehorde.net/api/v2"
+HORDE_API = "https://aihorde.net/api/v2"
 ANON_KEY  = "0000000000"
 UA        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 

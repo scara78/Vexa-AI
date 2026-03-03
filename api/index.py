@@ -156,7 +156,7 @@ class handler(BaseHTTPRequestHandler):
             "base_url":       "https://vexa-ai.vercel.app",
             "timestamp":      int(time.time()),
             "text_provider":  "Pollinations.AI (https://pollinations.ai)",
-            "image_provider": "Stable Horde (https://stablehorde.net)",
+            "image_provider": "Stable Horde (https://aihorde.net)",
             "rate_limits": {
                 "/query": "20 requests / IP / 60s",
                 "/chat":  "20 requests / IP / 60s",
