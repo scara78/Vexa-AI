@@ -3,84 +3,123 @@ import json, time
 
 ENDPOINTS = [
     {
-        "method": "GET",
-        "path": "/query",
+        "method":      "GET / POST",
+        "path":        "/query",
         "description": "Send a prompt to an AI model and get a response",
         "params": {
-            "q": "Your prompt (also accepted as 'query' or 'prompt' in POST body)",
-            "model": "(optional) Model ID. Defaults to first available model",
+            "q":      "Your prompt (GET) — also accepted as 'query'",
+            "model":  "(optional) Model ID. Defaults to first available. See /models.",
+            "system": "(optional) System prompt prepended before your message",
         },
-        "example_request": "GET /query?q=Hello&model=deepseek-v3.1",
-        "example_response": {"success": True, "response": "Hello! How can I help you today?", "model": "deepseek-v3.1", "elapsed_ms": 1243},
-    },
-    {
-        "method": "POST",
-        "path": "/query",
-        "description": "Send a prompt via JSON body",
-        "body_fields": {"q / query / prompt": "string (required)", "model": "string (optional)"},
-        "example_request": {"prompt": "Explain black holes in one sentence", "model": "gemini-3-flash"},
-        "example_response": {"success": True, "response": "A black hole is a region of spacetime...", "model": "gemini-3-flash", "elapsed_ms": 980},
-    },
-    {
-        "method": "GET",
-        "path": "/models",
-        "description": "List all available text models with provider, speed, and quality metadata",
-        "example_response": {"success": True, "default": "toolbaz-v4.5-fast", "models": {"toolbaz-v4.5-fast": {"provider": "ToolBaz", "speed": 250, "quality": 90}}},
-    },
-    {
-        "method": "GET",
-        "path": "/health",
-        "description": "Check upstream reachability, token generation, live text model list, and image service status",
+        "body_fields": {
+            "q / query / prompt": "string (required)",
+            "model":              "string (optional)",
+            "system":             "string (optional) — system/persona instructions",
+        },
         "example_response": {
-            "success": True, "status": "ok", "timestamp": 1740888000, "total_ms": 310,
-            "checks": {
-                "page": {"reachable": True, "status_code": 200, "latency_ms": 111},
-                "token": {"reachable": True, "token_received": True, "latency_ms": 47},
-                "models": {"reachable": True, "model_count": 19, "latency_ms": 87},
-                "image": {"reachable": True, "model_count": 20, "latency_ms": 210},
+            "success":      True,
+            "response":     "Hello! How can I help you today?",
+            "model":        "toolbaz-v4.5-fast",
+            "elapsed_ms":   1243,
+            "prompt_chars": 87,
+        },
+    },
+    {
+        "method":      "POST",
+        "path":        "/chat",
+        "description": "Multi-turn conversation using an OpenAI-style messages array. Handles context concatenation server-side.",
+        "body_fields": {
+            "messages": "array (required) — [{role: 'system'|'user'|'assistant', content: string}]",
+            "model":    "string (optional)",
+        },
+        "example_request": {
+            "model":    "gemini-3-flash",
+            "messages": [
+                {"role": "system",    "content": "You are a helpful assistant."},
+                {"role": "user",      "content": "What is the speed of light?"},
+                {"role": "assistant", "content": "The speed of light is approximately 299,792,458 m/s."},
+                {"role": "user",      "content": "How long does it take to reach the Moon?"},
+            ],
+        },
+        "example_response": {
+            "success": True,
+            "message": {"role": "assistant", "content": "At the speed of light, it takes about 1.28 seconds to reach the Moon."},
+            "model":        "gemini-3-flash",
+            "elapsed_ms":   980,
+            "prompt_chars": 312,
+        },
+    },
+    {
+        "method":      "GET",
+        "path":        "/models",
+        "description": "List all available text models (scraped live from toolbaz) and image models (from Stable Horde)",
+        "example_response": {
+            "success": True,
+            "default": "toolbaz-v4.5-fast",
+            "models": {
+                "toolbaz-v4.5-fast": {"provider": "ToolBaz", "speed": 250, "quality": 90},
             },
+            "image_models": [
+                {"name": "Deliberate", "count": 42, "queued": 5},
+            ],
         },
     },
     {
-        "method": "GET",
-        "path": "/image",
-        "description": "Generate images via Stable Horde. Returns base64-encoded webp images.",
+        "method":      "GET / POST",
+        "path":        "/image",
+        "description": "Generate images via Stable Horde. Returns base64-encoded webp. Takes 10–120s.",
         "params": {
-            "q / prompt": "Image description (required)",
-            "model": "(optional) Stable Horde model name. Defaults to 'Deliberate'. Use /image/options for valid names.",
-            "resolution": "(optional) One of: 512x512, 512x768, 768x512, 768x768. Defaults to 512x512.",
-            "num / numImages": "(optional) Number of images 1-4. Defaults to 1.",
+            "q / prompt":      "Image description (required)",
+            "negative_prompt": "(optional) Things to exclude from the image",
+            "model":           "(optional) Stable Horde model name. Default: Deliberate. See /models → image_models.",
+            "resolution":      "(optional) 512x512 | 512x768 | 768x512 | 768x768. Default: 512x512",
+            "num":             "(optional) Number of images 1–4. Default: 1",
+            "cfg_scale":       "(optional) Guidance scale 1–20. Default: 7. Higher = more prompt-adherent.",
+            "steps":           "(optional) Inference steps 1–50. Default: 20. Higher = more detail, slower.",
         },
-        "example_request": "GET /image?q=a+sunset+over+mountains&model=Deliberate&resolution=512x512&num=1",
         "example_response": {
-            "success": True,
-            "prompt": "a sunset over mountains",
-            "model": "Deliberate",
-            "resolution": "512x512",
-            "num_images": 1,
-            "images": [{"url": "https://...r2.cloudflarestorage.com/...webp", "b64": "<base64 webp>", "seed": "149576367", "worker": "WorkerName"}],
+            "success":         True,
+            "prompt":          "a sunset over mountains",
+            "negative_prompt": "blurry, watermark",
+            "model":           "Deliberate",
+            "resolution":      "512x512",
+            "cfg_scale":       7,
+            "steps":           20,
+            "num_images":      1,
+            "elapsed_ms":      34200,
+            "images": [
+                {"url": "https://...webp", "b64": "<base64>", "seed": "149576367", "worker": "Caustic"},
+            ],
         },
     },
     {
-        "method": "GET",
-        "path": "/image/options",
-        "description": "List available image models and resolutions scraped live from Stable Horde",
+        "method":      "GET",
+        "path":        "/health",
+        "description": "Live check of all upstream services: toolbaz page, token endpoint, model scraper, and Stable Horde image pipeline",
         "example_response": {
-            "success": True,
-            "models": ["Deliberate", "AlbedoBase XL 3.1", "Dreamshaper", "Flux.1-Schnell fp8 (Compact)"],
-            "resolutions": ["512x512", "512x768", "768x512", "768x768"],
-            "default_model": "Deliberate",
-            "default_resolution": "512x512",
+            "success":   True,
+            "status":    "ok",
+            "timestamp": 1740888000,
+            "total_ms":  890,
+            "checks": {
+                "page":   {"reachable": True, "status_code": 200, "latency_ms": 210},
+                "token":  {"reachable": True, "token_received": True, "latency_ms": 130},
+                "models": {"reachable": True, "model_count": 19, "latency_ms": 215},
+                "image":  {"reachable": True, "model_count": 84, "job_submitted": True, "is_possible": True, "queue_position": 12, "estimated_wait_s": 45, "latency_ms": 620},
+            },
         },
     },
 ]
 
 ERROR_RESPONSES = [
     {"status": 400, "body": {"success": False, "error": "Missing required parameter: q, query, or prompt"}},
+    {"status": 400, "body": {"success": False, "error": "Missing or empty 'messages' array"}},
+    {"status": 400, "body": {"success": False, "error": "messages[0].role must be 'system', 'user', or 'assistant'"}},
     {"status": 400, "body": {"success": False, "error": "Prompt exceeds maximum length of 4000 characters"}},
     {"status": 400, "body": {"success": False, "error": "Unknown model 'xyz'", "valid_models": ["toolbaz-v4.5-fast", "..."]}},
     {"status": 429, "body": {"success": False, "error": "Rate limit exceeded. Try again shortly."}},
     {"status": 502, "body": {"success": False, "error": "Upstream request failed"}},
+    {"status": 502, "body": {"success": False, "error": "No workers available for this model. Check /models for valid image_models."}},
     {"status": 500, "body": {"success": False, "error": "Internal server error"}},
 ]
 
@@ -97,12 +136,17 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         body = json.dumps({
-            "name": "Toolbaz + Stable Horde API",
-            "description": "Text generation via toolbaz.com (19 AI models) and image generation via Stable Horde. No API key required.",
-            "timestamp": int(time.time()),
-            "rate_limit": "20 requests per IP per 60 seconds (text); 10 per 60 seconds (image)",
-            "endpoints": ENDPOINTS,
-            "errors": ERROR_RESPONSES,
+            "name":        "Vexa AI",
+            "description": "Free text and image generation API. No key required.",
+            "base_url":    "https://vexa-ai.vercel.app",
+            "timestamp":   int(time.time()),
+            "rate_limits": {
+                "/query": "20 requests / IP / 60s",
+                "/chat":  "20 requests / IP / 60s",
+                "/image": "10 requests / IP / 60s",
+            },
+            "endpoints":   ENDPOINTS,
+            "errors":      ERROR_RESPONSES,
         }, ensure_ascii=False, indent=2).encode()
 
         self.send_response(200)

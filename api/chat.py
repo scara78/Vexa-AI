@@ -52,14 +52,14 @@ def _refresh_models():
         pass
 
 
-def _valid_model(model: str) -> bool:
-    _refresh_models()
-    return model in _models_cache["keys"] if _models_cache["keys"] else True
-
-
 def _default_model() -> str:
     _refresh_models()
     return _models_cache["default"]
+
+
+def _valid_model(model: str) -> bool:
+    _refresh_models()
+    return model in _models_cache["keys"] if _models_cache["keys"] else True
 
 
 def _is_rate_limited(ip: str) -> bool:
@@ -169,50 +169,31 @@ def _respond(h, status: int, data: dict):
     h.send_header("Content-Type", "application/json")
     h.send_header("Content-Length", str(len(body)))
     h.send_header("Access-Control-Allow-Origin", "*")
-    h.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    h.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
     h.send_header("Access-Control-Allow-Headers", "Content-Type")
     h.end_headers()
     h.wfile.write(body)
 
 
-def _build_prompt(prompt: str, system: str | None) -> str:
+def _messages_to_prompt(messages: list) -> tuple[str, str | None]:
+    system = None
+    turns  = []
+    for msg in messages:
+        role    = str(msg.get("role", "")).lower()
+        content = str(msg.get("content", "")).strip()
+        if not content:
+            continue
+        if role == "system":
+            system = content
+        elif role == "user":
+            turns.append(f"User: {content}")
+        elif role == "assistant":
+            turns.append(f"Assistant: {content}")
+    turns.append("Assistant:")
+    prompt = "\n".join(turns)
     if system:
-        return f"{system.strip()}\n\n{prompt.strip()}"
-    return prompt.strip()
-
-
-def _run(h, prompt, model, system=None):
-    ip = _get_ip(h)
-    if _is_rate_limited(ip):
-        _respond(h, 429, {"error": "Rate limit exceeded. Try again shortly."})
-        return
-    if not prompt or not prompt.strip():
-        _respond(h, 400, {"error": "Missing required parameter: q, query, or prompt"})
-        return
-    full_prompt = _build_prompt(prompt, system)
-    if len(full_prompt) > MAX_PROMPT_LENGTH:
-        _respond(h, 400, {"error": f"Prompt exceeds maximum length of {MAX_PROMPT_LENGTH} characters"})
-        return
-    if not model:
-        model = _default_model()
-    if not _valid_model(model):
-        _respond(h, 400, {"error": f"Unknown model '{model}'", "valid_models": sorted(_models_cache["keys"])})
-        return
-    try:
-        t0       = time.time()
-        upstream = _fetch_upstream(full_prompt, model)
-        raw      = "".join(c for c in upstream.iter_content(chunk_size=None, decode_unicode=True) if c).strip()
-        text     = _parse_full(raw)
-        _respond(h, 200, {
-            "response":     text,
-            "model":        model,
-            "elapsed_ms":   round((time.time() - t0) * 1000),
-            "prompt_chars": len(full_prompt),
-        })
-    except RuntimeError:
-        _respond(h, 502, {"error": "Upstream request failed"})
-    except Exception:
-        _respond(h, 500, {"error": "Internal server error"})
+        prompt = f"{system}\n\n{prompt}"
+    return prompt, system
 
 
 class handler(BaseHTTPRequestHandler):
@@ -221,25 +202,65 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
-    def do_GET(self):
-        params = parse_qs(urlparse(self.path).query)
-        prompt = (params.get("q") or params.get("query") or [None])[0]
-        model  = (params.get("model") or [None])[0] or _default_model()
-        system = (params.get("system") or [None])[0]
-        _run(self, prompt, model, system)
-
     def do_POST(self):
+        ip = _get_ip(self)
+        if _is_rate_limited(ip):
+            _respond(self, 429, {"error": "Rate limit exceeded. Try again shortly."})
+            return
+
         length = int(self.headers.get("Content-Length", 0))
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
         except json.JSONDecodeError:
             _respond(self, 400, {"error": "Invalid JSON body"})
             return
-        prompt = body.get("q") or body.get("query") or body.get("prompt")
-        model  = body.get("model") or _default_model()
-        system = body.get("system")
-        _run(self, prompt, model, system)
+
+        messages = body.get("messages")
+        if not messages or not isinstance(messages, list) or len(messages) == 0:
+            _respond(self, 400, {"error": "Missing or empty 'messages' array"})
+            return
+
+        for i, msg in enumerate(messages):
+            if not isinstance(msg, dict):
+                _respond(self, 400, {"error": f"messages[{i}] must be an object"})
+                return
+            if msg.get("role") not in ("system", "user", "assistant"):
+                _respond(self, 400, {"error": f"messages[{i}].role must be 'system', 'user', or 'assistant'"})
+                return
+            if not isinstance(msg.get("content", ""), str):
+                _respond(self, 400, {"error": f"messages[{i}].content must be a string"})
+                return
+
+        model = body.get("model") or _default_model()
+        if not _valid_model(model):
+            _respond(self, 400, {"error": f"Unknown model '{model}'", "valid_models": sorted(_models_cache["keys"])})
+            return
+
+        prompt, system = _messages_to_prompt(messages)
+
+        if len(prompt) > MAX_PROMPT_LENGTH:
+            _respond(self, 400, {"error": f"Conversation exceeds maximum length of {MAX_PROMPT_LENGTH} characters"})
+            return
+
+        try:
+            t0       = time.time()
+            upstream = _fetch_upstream(prompt, model)
+            raw      = "".join(c for c in upstream.iter_content(chunk_size=None, decode_unicode=True) if c).strip()
+            text     = _parse_full(raw)
+            _respond(self, 200, {
+                "message": {
+                    "role":    "assistant",
+                    "content": text,
+                },
+                "model":        model,
+                "elapsed_ms":   round((time.time() - t0) * 1000),
+                "prompt_chars": len(prompt),
+            })
+        except RuntimeError:
+            _respond(self, 502, {"error": "Upstream request failed"})
+        except Exception:
+            _respond(self, 500, {"error": "Internal server error"})

@@ -1,141 +1,123 @@
-# Vexa AI API
-Text generation via [toolbaz.com](https://toolbaz.com/writer/chat-gpt-alternative) (19 AI models) and image generation via [Stable Horde](https://stablehorde.net). No API key required.
+# Vexa AI
 
----
+Free REST API for text and image generation. No account, no API key, no setup.
 
-## Deploy
-```bash
-npm i -g vercel
-vercel
+- **Text** — 19 AI models via [toolbaz.com](https://toolbaz.com)
+- **Images** — Community GPU cluster via [Stable Horde](https://stablehorde.net)
+
 ```
-
----
-
-## Project Structure
-```
-api/
-├── index.py        # GET /
-├── query.py        # GET/POST /query
-├── models.py       # GET /models
-├── health.py       # GET /health
-└── image.py        # GET /image, /image/options
-requirements.txt
-vercel.json
+BASE_URL = https://vexa-ai.vercel.app
 ```
 
 ---
 
 ## Endpoints
 
-### `GET /query`
-```
-/query?q=Hello
-/query?q=Hello&model=deepseek-v3.1
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | API index, self-documenting |
+| `GET` | `/models` | All text + image models |
+| `GET POST` | `/query` | Single prompt → response |
+| `POST` | `/chat` | Multi-turn conversation (OpenAI-style messages array) |
+| `GET POST` | `/image` | Generate images |
+| `GET` | `/health` | Live status of all upstream services |
 
-### `POST /query`
+---
+
+## Quick Start
+
 ```bash
-curl -X POST https://your-app.vercel.app/query \
+# Ask a question
+curl "https://vexa-ai.vercel.app/query?q=What+is+a+black+hole"
+
+# Ask with a system prompt
+curl "https://vexa-ai.vercel.app/query?q=Hello&system=You+are+a+pirate"
+
+# Multi-turn chat
+curl -X POST https://vexa-ai.vercel.app/chat \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Hello", "model": "deepseek-v3.1"}'
-```
-**Response**
-```json
-{ "success": true, "response": "...", "model": "deepseek-v3.1", "elapsed_ms": 1243 }
-```
+  -d '{"messages": [{"role": "user", "content": "Hello!"}]}'
 
----
+# Generate an image
+curl "https://vexa-ai.vercel.app/image?q=a+red+fox+in+a+neon+city"
 
-### `GET /models`
-Returns all available text models (scraped live from Toolbaz) plus top image models from Stable Horde.
-```json
-{
-  "success": true,
-  "default": "toolbaz-v4.5-fast",
-  "models": { "toolbaz-v4.5-fast": { "provider": "ToolBaz", "speed": 250, "quality": 90 } },
-  "image_models": [{ "name": "Deliberate", "count": 42, "queued": 5 }]
-}
+# Generate with negative prompt and custom settings
+curl "https://vexa-ai.vercel.app/image?q=a+portrait&negative_prompt=blurry,watermark&cfg_scale=10&steps=30"
+
+# List all models
+curl "https://vexa-ai.vercel.app/models"
+
+# Check system health
+curl "https://vexa-ai.vercel.app/health"
 ```
 
 ---
 
-### `GET /image`
-Generates images via Stable Horde. Returns base64-encoded webp.
+## Docs
 
-| Param | Required | Default | Notes |
-|-------|----------|---------|-------|
-| `q` / `prompt` | yes | — | Image description |
-| `model` | no | `Deliberate` | Use `/image/options` for valid names |
-| `resolution` | no | `512x512` | `512x512`, `512x768`, `768x512`, `768x768` |
-| `num` / `numImages` | no | `1` | 1–4 |
-```
-GET /image?q=a+sunset+over+mountains&model=Deliberate&resolution=512x512&num=1
-```
-**Response**
-```json
-{
-  "success": true,
-  "prompt": "a sunset over mountains",
-  "model": "Deliberate",
-  "resolution": "512x512",
-  "num_images": 1,
-  "images": [{ "url": "https://...webp", "b64": "<base64>", "seed": "149576367", "worker": "WorkerName" }]
-}
-```
-Display with: `<img src="data:image/webp;base64,{b64}">`
-
-> Image generation takes 10–60s depending on Stable Horde queue.
-
-### `GET /image/options`
-```json
-{
-  "success": true,
-  "models": ["Deliberate", "AlbedoBase XL 3.1", "Dreamshaper", "Flux.1-Schnell fp8 (Compact)"],
-  "resolutions": ["512x512", "512x768", "768x512", "768x768"],
-  "default_model": "Deliberate",
-  "default_resolution": "512x512"
-}
-```
+- [Models →](./MODELS.md)
+- [Query →](./QUERY.md)
+- [Chat →](./CHAT.md)
+- [Image →](./IMAGE.md)
+- [Health →](./HEALTH.md)
 
 ---
 
-### `GET /health`
-Checks all upstream services.
+## Rate Limits
+
+| Endpoint | Limit |
+|----------|-------|
+| `/query` | 20 requests / IP / 60s |
+| `/chat` | 20 requests / IP / 60s |
+| `/image` | 10 requests / IP / 60s |
+
+Rate limiting is in-memory per serverless instance and resets on cold starts.
+
+---
+
+## Errors
+
+All errors follow the same shape:
+
 ```json
-{
-  "success": true,
-  "status": "ok",
-  "checks": {
-    "page":   { "reachable": true, "latency_ms": 111 },
-    "token":  { "reachable": true, "token_received": true, "latency_ms": 47 },
-    "models": { "reachable": true, "model_count": 19, "latency_ms": 87 },
-    "image":  { "reachable": true, "model_count": 84, "top_models": ["Deliberate", "..."], "latency_ms": 210 }
-  }
-}
+{ "success": false, "error": "description of what went wrong" }
 ```
 
----
-
-## Error Responses
-
-| Status | Error |
-|--------|-------|
-| `400` | `"Missing required parameter"` |
-| `400` | `"Prompt exceeds maximum length of 4000 characters"` |
-| `400` | `"Unknown model 'xyz'"` |
-| `429` | `"Rate limit exceeded"` |
-| `502` | `"Upstream request failed"` |
+| Status | Meaning |
+|--------|---------|
+| `400` | Bad request — missing or invalid parameters |
+| `429` | Rate limit exceeded |
+| `502` | Upstream service failed |
+| `500` | Internal server error |
 
 ---
 
-## Rate Limiting
-- Text (`/query`): 20 requests per IP per 60s
-- Image (`/image`): 10 requests per IP per 60s
+## Deploy Your Own
 
-> In-memory per serverless instance, resets on cold starts.
+```bash
+git clone https://github.com/your-username/vexa-ai
+npm i -g vercel
+vercel
+```
+
+Requires Python 3.9+. Dependencies: `requests` only.
+
+```
+api/
+├── index.py     # GET /
+├── query.py     # GET POST /query
+├── chat.py      # POST /chat
+├── models.py    # GET /models
+├── health.py    # GET /health
+└── image.py     # GET POST /image
+requirements.txt
+vercel.json
+```
 
 ## Run Locally
+
 ```bash
 pip install requests
 vercel dev
+# → http://localhost:3000
 ```

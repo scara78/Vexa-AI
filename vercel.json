@@ -5,6 +5,10 @@
       "dest": "/api/query.py"
     },
     {
+      "src": "/chat",
+      "dest": "/api/chat.py"
+    },
+    {
       "src": "/models",
       "dest": "/api/models.py"
     },
@@ -21,6 +25,10 @@
       "dest": "/api/query.py"
     },
     {
+      "src": "/api/chat",
+      "dest": "/api/chat.py"
+    },
+    {
       "src": "/api/models",
       "dest": "/api/models.py"
     },
@@ -35,6 +43,10 @@
     {
       "src": "/",
       "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/404.py"
     }
   ]
 }
