@@ -2,11 +2,11 @@ from http.server import BaseHTTPRequestHandler
 import json, time
 import requests as req
 
-POLLINATIONS_URL  = "https://text.pollinations.ai/openai"
+POLLINATIONS_URL        = "https://text.pollinations.ai/openai"
 POLLINATIONS_MODELS_URL = "https://text.pollinations.ai/models"
-HORDE_API = "https://aihorde.net/api/v2"
-ANON_KEY  = "0000000000"
-UA        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+HORDE_API               = "https://aihorde.net/api/v2"
+ANON_KEY                = "0000000000"
+UA                      = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 
 def _check_pollinations() -> dict:
@@ -18,7 +18,7 @@ def _check_pollinations() -> dict:
             headers={"User-Agent": UA, "Content-Type": "application/json"},
             timeout=15,
         )
-        ok = r.status_code == 200
+        ok   = r.status_code == 200
         text = ""
         if ok:
             try:
@@ -36,22 +36,22 @@ def _check_pollinations_models() -> dict:
         r = req.get(POLLINATIONS_MODELS_URL, headers={"User-Agent": UA}, timeout=10)
         r.raise_for_status()
         models = r.json()
-        count = len(models)
+        count  = len(models) if isinstance(models, list) else 0
         return {"reachable": count > 0, "model_count": count, "latency_ms": round((time.time() - t0) * 1000)}
     except Exception as e:
         return {"reachable": False, "model_count": 0, "error": str(e), "latency_ms": round((time.time() - t0) * 1000)}
 
 
 def _check_image() -> dict:
-    t0 = time.time()
-    debug: dict = {}
+    t0    = time.time()
+    debug = {}
     try:
         r = req.get(f"{HORDE_API}/status/models?type=image", headers={"User-Agent": UA}, timeout=10)
         r.raise_for_status()
         all_models = sorted(r.json(), key=lambda m: m.get("count", 0), reverse=True)
-        debug["horde_models_reachable"] = True
-        debug["model_count"] = len(all_models)
-        debug["top_models"] = [m["name"] for m in all_models[:5]]
+        debug["horde_models_reachable"]  = True
+        debug["model_count"]             = len(all_models)
+        debug["top_models"]              = [m["name"] for m in all_models[:5]]
         debug["horde_models_latency_ms"] = round((time.time() - t0) * 1000)
     except Exception as e:
         return {"reachable": False, "model_count": 0, "error": f"Failed to reach Horde models: {e}", "latency_ms": round((time.time() - t0) * 1000), "debug": debug}
@@ -61,16 +61,13 @@ def _check_image() -> dict:
         payload = {
             "prompt": "a red circle",
             "params": {"width": 64, "height": 64, "n": 1, "steps": 1, "sampler_name": "k_euler", "cfg_scale": 1, "seed": "1"},
-            "models": ["Deliberate"],
-            "r2": True,
-            "shared": False,
+            "models": ["Deliberate"], "r2": True, "shared": False,
         }
         r2 = req.post(f"{HORDE_API}/generate/async", json=payload, headers={"apikey": ANON_KEY, "User-Agent": UA, "Content-Type": "application/json"}, timeout=15)
         r2.raise_for_status()
-        submit_json = r2.json()
-        job_id = submit_json.get("id")
-        debug["job_submit_status"] = r2.status_code
-        debug["job_id"] = job_id
+        job_id = r2.json().get("id")
+        debug["job_submit_status"]     = r2.status_code
+        debug["job_id"]                = job_id
         debug["job_submit_latency_ms"] = round((time.time() - t1) * 1000)
     except Exception as e:
         debug["job_submit_error"] = str(e)
@@ -83,9 +80,9 @@ def _check_image() -> dict:
     try:
         check = req.get(f"{HORDE_API}/generate/check/{job_id}", headers={"apikey": ANON_KEY, "User-Agent": UA}, timeout=10).json()
         debug["job_check_latency_ms"] = round((time.time() - t2) * 1000)
-        debug["is_possible"]    = check.get("is_possible")
-        debug["queue_position"] = check.get("queue_position")
-        debug["wait_time_s"]    = check.get("wait_time")
+        debug["is_possible"]          = check.get("is_possible")
+        debug["queue_position"]       = check.get("queue_position")
+        debug["wait_time_s"]          = check.get("wait_time")
     except Exception as e:
         debug["job_check_error"] = str(e)
 
@@ -95,16 +92,16 @@ def _check_image() -> dict:
         pass
 
     return {
-        "reachable":       True,
-        "model_count":     debug.get("model_count", 0),
-        "top_models":      debug.get("top_models", []),
-        "job_submitted":   True,
-        "job_id":          job_id,
-        "is_possible":     debug.get("is_possible"),
-        "queue_position":  debug.get("queue_position"),
+        "reachable":        True,
+        "model_count":      debug.get("model_count", 0),
+        "top_models":       debug.get("top_models", []),
+        "job_submitted":    True,
+        "job_id":           job_id,
+        "is_possible":      debug.get("is_possible"),
+        "queue_position":   debug.get("queue_position"),
         "estimated_wait_s": debug.get("wait_time_s"),
-        "latency_ms":      round((time.time() - t0) * 1000),
-        "debug":           debug,
+        "latency_ms":       round((time.time() - t0) * 1000),
+        "debug":            debug,
     }
 
 
@@ -119,7 +116,7 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        t_start     = time.time()
+        t_start      = time.time()
         pollinations = _check_pollinations()
         models       = _check_pollinations_models()
         image        = _check_image()
@@ -138,7 +135,7 @@ class handler(BaseHTTPRequestHandler):
         }, ensure_ascii=False).encode()
 
         self.send_response(200)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type",   "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()

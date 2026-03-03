@@ -1,47 +1,12 @@
-# Chat
+# Health
 
-Multi-turn conversation endpoint. Accepts an OpenAI-style `messages` array and handles all context concatenation server-side, so you don't have to build prompts manually.
+Live status check for all upstream services.
 
 ```
-POST https://vexa-ai.vercel.app/chat
+GET https://vexa-ai.vercel.app/health
 ```
 
----
-
-## Request
-
-```bash
-curl -X POST https://vexa-ai.vercel.app/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gemini-3-flash",
-    "messages": [
-      { "role": "system",    "content": "You are a helpful assistant. Be concise." },
-      { "role": "user",      "content": "What is the speed of light?" },
-      { "role": "assistant", "content": "Approximately 299,792,458 metres per second." },
-      { "role": "user",      "content": "How long does it take to reach the Moon?" }
-    ]
-  }'
-```
-
-### Body fields
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `messages` | yes | Array of message objects. Must contain at least one message. |
-| `model` | no | Model ID. Defaults to first available. See [`/models`](./MODELS.md). |
-
-### Message object
-
-| Field | Required | Values | Description |
-|-------|----------|--------|-------------|
-| `role` | yes | `system` \| `user` \| `assistant` | Who sent this message |
-| `content` | yes | string | The message text |
-
-**Role behaviour:**
-- `system` — Sets persona or standing instructions. Applied once at the top regardless of position in the array.
-- `user` — A message from the human.
-- `assistant` — A previous reply from the model. Include these to give the model context of what it already said.
+Actively tests the Toolbaz page, token endpoint, and model scraping — plus submits a real (immediately-cancelled) Stable Horde job to verify the image pipeline.
 
 ---
 
@@ -50,149 +15,34 @@ curl -X POST https://vexa-ai.vercel.app/chat \
 ```json
 {
   "success": true,
-  "message": {
-    "role": "assistant",
-    "content": "At the speed of light, it takes approximately 1.28 seconds to reach the Moon from Earth."
+  "status": "ok",
+  "timestamp": 1740888000,
+  "total_ms": 270,
+  "checks": {
+    "page":   { "reachable": true, "status_code": 200, "latency_ms": 107 },
+    "token":  { "reachable": true, "token_received": true, "status_code": 200, "latency_ms": 57 },
+    "models": { "reachable": true, "model_count": 19, "latency_ms": 103 }
   },
-  "model": "gemini-3-flash",
-  "elapsed_ms": 980,
-  "prompt_chars": 312
+  "models": {
+    "toolbaz-v4.5-fast": { "label": "ToolBaz-v4.5-Fast", "provider": "ToolBaz",  "speed": 250, "quality": 90 },
+    "gemini-3-flash":    { "label": "Gemini-3-Flash",    "provider": "Google",   "speed": 60,  "quality": 94 },
+    "deepseek-v3.1":     { "label": "Deepseek-V3.1",     "provider": "DeepSeek", "speed": 295, "quality": 80 }
+  },
+  "debug": { ... }
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `success` | bool | `true` on success |
-| `message.role` | string | Always `"assistant"` |
-| `message.content` | string | The model's reply |
-| `model` | string | Model ID that was used |
-| `elapsed_ms` | number | Total round-trip time in milliseconds |
-| `prompt_chars` | number | Character count of the full prompt sent upstream |
+`status` is `"ok"` when all three checks pass. Otherwise `"degraded"`.
 
 ---
 
-## How Context Works
+## Fields
 
-The server concatenates your messages array into a single prompt before sending upstream:
-
-```
-{system content}
-
-User: {first user message}
-Assistant: {first assistant message}
-User: {second user message}
-Assistant:
-```
-
-The model then completes the final `Assistant:` turn. This means the model sees the full conversation history on every request — you are responsible for passing the complete history each time.
-
----
-
-## Examples
-
-### Basic single turn
-
-```js
-const res = await fetch('https://vexa-ai.vercel.app/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    messages: [{ role: 'user', content: 'Hello!' }]
-  })
-});
-const data = await res.json();
-console.log(data.message.content);
-```
-
-### Multi-turn conversation loop (JavaScript)
-
-```js
-const BASE = 'https://vexa-ai.vercel.app';
-const model = 'gemini-3-flash';
-const history = [
-  { role: 'system', content: 'You are a helpful assistant. Be concise.' }
-];
-
-async function chat(userMessage) {
-  history.push({ role: 'user', content: userMessage });
-
-  const res = await fetch(`${BASE}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages: history })
-  });
-
-  const data = await res.json();
-  const reply = data.message.content;
-  history.push({ role: 'assistant', content: reply });
-  return reply;
-}
-
-console.log(await chat('What is a black hole?'));
-console.log(await chat('How big can they get?'));
-console.log(await chat('Have we ever observed one directly?'));
-```
-
-### Python conversation loop
-
-```python
-import requests
-
-BASE = 'https://vexa-ai.vercel.app'
-history = [
-    {'role': 'system', 'content': 'You are a concise assistant.'}
-]
-
-def chat(user_message, model='deepseek-v3.1'):
-    history.append({'role': 'user', 'content': user_message})
-    r = requests.post(f'{BASE}/chat', json={'model': model, 'messages': history})
-    reply = r.json()['message']['content']
-    history.append({'role': 'assistant', 'content': reply})
-    return reply
-
-print(chat('What is the tallest mountain?'))
-print(chat('How was it formed?'))
-print(chat('Has anyone climbed it in winter?'))
-```
-
----
-
-## vs `/query`
-
-| | `/query` | `/chat` |
-|-|----------|---------|
-| Input | Single string prompt | Messages array |
-| Context | You handle manually | Structured via roles |
-| System prompt | `system` param | `{"role": "system"}` message |
-| Multi-turn | Manual concatenation | Built-in |
-| Response shape | `{ response: string }` | `{ message: { role, content } }` |
-
-Use `/query` for one-off prompts. Use `/chat` when building a conversational interface.
-
----
-
-## Limits
-
-| Limit | Value |
-|-------|-------|
-| Max total conversation length | 4000 characters |
-| Rate limit | 20 requests / IP / 60s |
-| Upstream timeout | 55s |
-| Retries | 3 with exponential backoff |
-
-> The 4000 character limit applies to the full concatenated prompt including all message history. Trim older messages from the array if you hit this limit.
-
----
-
-## Errors
-
-| Status | Error | Cause |
-|--------|-------|-------|
-| `400` | `Missing or empty 'messages' array` | No messages provided |
-| `400` | `messages[N] must be an object` | Non-object entry in array |
-| `400` | `messages[N].role must be 'system', 'user', or 'assistant'` | Invalid role value |
-| `400` | `Conversation exceeds maximum length of 4000 characters` | History too long — trim older messages |
-| `400` | `Unknown model 'xyz'` | Invalid model ID |
-| `429` | `Rate limit exceeded. Try again shortly.` | Too many requests |
-| `502` | `Upstream request failed` | toolbaz.com unreachable |
-| `500` | `Internal server error` | Unexpected failure |
+| Field | Description |
+|-------|-------------|
+| `checks.page` | HTTP GET to the Toolbaz page |
+| `checks.token` | POST to token endpoint with a real fingerprint |
+| `checks.models` | Scrapes the model select list, returns count |
+| `models` | Full live model catalog with speed/quality/provider |
+| `debug` | Raw scraping diagnostic data |
+| `total_ms` | Wall time for all checks combined |

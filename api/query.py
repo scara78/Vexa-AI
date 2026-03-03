@@ -1,124 +1,66 @@
 from http.server import BaseHTTPRequestHandler
-import json, time, collections, base64, random, re
+from urllib.parse import urlparse, parse_qs, unquote_plus
+import json, base64, random, time, re, collections, html as html_lib
 import requests as req
 
-TOOLBAZ_PAGE_URL  = "https://toolbaz.com/writer/chat-gpt-alternative"
-TOKEN_URL         = "https://data.toolbaz.com/token.php"
-WRITE_URL         = "https://data.toolbaz.com/writing.php"
-MODELS_CACHE_TTL  = 300
-DEFAULT_MODEL     = "toolbaz-v4.5-fast"
-SESSION_ID        = "yz3SJSGvR1ih8w5vfOmk9Fpd87iSGfUos54s"
-
-MAX_PROMPT_LENGTH = 16000
-MAX_REQUESTS      = 20
-RATE_WINDOW       = 60
-
-_rate_store:   dict = {}
-_models_cache: dict = {"models": set(), "ts": 0}
-
-UA   = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-HDRS = {
-    "Referer":             TOOLBAZ_PAGE_URL,
-    "Origin":              "https://toolbaz.com",
-    "X-Requested-With":    "XMLHttpRequest",
-    "Content-Type":        "application/x-www-form-urlencoded; charset=UTF-8",
-    "User-Agent":          UA,
+UA        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+PAGE_URL  = "https://toolbaz.com/writer/chat-gpt-alternative"
+TOKEN_URL = "https://data.toolbaz.com/token.php"
+WRITE_URL = "https://data.toolbaz.com/writing.php"
+POST_HDRS = {
+    "User-Agent":       UA,
+    "Referer":          PAGE_URL,
+    "Origin":           "https://toolbaz.com",
+    "X-Requested-With": "XMLHttpRequest",
+    "Content-Type":     "application/x-www-form-urlencoded; charset=UTF-8",
+    "Accept-Language":  "en-US,en;q=0.9",
 }
 
+MAX_PROMPT_LENGTH = 4000
+MAX_REQUESTS      = 20
+RATE_WINDOW       = 60
+MAX_RETRIES       = 3
+BACKOFF_BASE      = 1.5
+MODELS_CACHE_TTL  = 300
+DEFAULT_MODEL     = "toolbaz-v4.5-fast"
 
-def _gRS(n: int) -> str:
-    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-    return "".join(random.choice(chars) for _ in range(n))
-
-
-def _make_client_token() -> str:
-    payload = {
-        "bR6wF": {
-            "nV5kP": UA,
-            "lQ9jX": "en-US",
-            "sD2zR": "1920x1080",
-            "tY4hL": "America/New_York",
-            "pL8mC": "Win32",
-            "cQ3vD": 24,
-            "hK7jN": 8,
-        },
-        "uT4bX": {"mM9wZ": [], "kP8jY": []},
-        "tuTcS": int(time.time()),
-        "tDfxy": None,
-        "RtyJt": _gRS(36),
-    }
-    b64 = base64.b64encode(
-        json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
-    ).decode("ascii")
-    return _gRS(6) + b64
+_rate_store:   dict = {}
+_models_cache: dict = {"keys": set(), "default": DEFAULT_MODEL, "ts": 0}
 
 
-def _get_valid_models() -> set:
+def _refresh_models():
     now = time.time()
-    if _models_cache["models"] and now - _models_cache["ts"] < MODELS_CACHE_TTL:
-        return _models_cache["models"]
+    if _models_cache["keys"] and now - _models_cache["ts"] < MODELS_CACHE_TTL:
+        return
     try:
-        r = req.get(TOOLBAZ_PAGE_URL, headers={"User-Agent": UA}, timeout=10)
+        r = req.get(PAGE_URL, headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"}, timeout=15)
         r.raise_for_status()
-        models = set()
-        seen = set()
-        for match in re.finditer(
-            r'<option[^>]+value=["\']([^"\']+)["\'][^>]*>\s*([^<]+?)\s*</option>',
-            r.text,
-        ):
-            mid = match.group(1).strip()
-            if mid and mid not in seen:
-                seen.add(mid)
-                models.add(mid)
-        if models:
-            _models_cache["models"] = models
-            _models_cache["ts"] = now
-            return models
+        select_block = re.search(r'<select[^>]*\bname=["\']?model["\']?[^>]*>(.*?)(?:</select>|$)', r.text, re.DOTALL | re.IGNORECASE)
+        if not select_block:
+            return
+        keys: list = []
+        seen: set  = set()
+        for m in re.finditer(r'<option[^>]*\bvalue=["\']?([^"\'>\s]+)["\']?', select_block.group(1), re.IGNORECASE):
+            k = html_lib.unescape(m.group(1)).strip()
+            if k and k not in seen:
+                keys.append(k)
+                seen.add(k)
+        if keys:
+            _models_cache["keys"]    = set(keys)
+            _models_cache["default"] = DEFAULT_MODEL if DEFAULT_MODEL in set(keys) else keys[0]
+            _models_cache["ts"]      = now
     except Exception:
         pass
-    return _models_cache["models"] or {DEFAULT_MODEL}
 
 
-def _toolbaz_complete(prompt: str, model: str) -> str:
-    s = req.Session()
-    s.headers.update({"User-Agent": UA})
-    s.cookies.set("SessionID", SESSION_ID, domain="data.toolbaz.com")
-
-    client_token = _make_client_token()
-    r = s.post(TOKEN_URL, data={"session_id": SESSION_ID, "token": client_token},
-               headers=HDRS, timeout=10)
-    r.raise_for_status()
-    capcha = r.json().get("token", "")
-    if not capcha:
-        raise ValueError("Failed to obtain capcha token")
-
-    r2 = s.post(WRITE_URL, data={
-        "text":       prompt,
-        "capcha":     capcha,
-        "model":      model,
-        "session_id": SESSION_ID,
-    }, headers={**HDRS, "Accept": "text/event-stream,*/*"}, timeout=30)
-    r2.raise_for_status()
-
-    text = r2.text
-    if "capcha" in text.lower() or "expired" in text.lower():
-        raise ValueError(f"Toolbaz rejected request: {text[:200]}")
-    return text.strip()
+def _valid_model(model: str) -> bool:
+    _refresh_models()
+    return model in _models_cache["keys"] if _models_cache["keys"] else True
 
 
-def _messages_to_prompt(messages: list) -> str:
-    parts = []
-    for m in messages:
-        role    = m.get("role", "user")
-        content = m.get("content", "").strip()
-        if role == "system":
-            parts.append(f"[System]: {content}")
-        elif role == "assistant":
-            parts.append(f"Assistant: {content}")
-        else:
-            parts.append(f"User: {content}")
-    parts.append("Assistant:")
-    return "\n\n".join(parts)
+def _default_model() -> str:
+    _refresh_models()
+    return _models_cache["default"]
 
 
 def _is_rate_limited(ip: str) -> bool:
@@ -134,10 +76,88 @@ def _is_rate_limited(ip: str) -> bool:
     return False
 
 
+def _random_string(n: int) -> str:
+    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    return "".join(random.choice(chars) for _ in range(n))
+
+
+def _build_fingerprint() -> str:
+    obj = {
+        "bR6wF": {"nV5kP": UA, "lQ9jX": "en-US", "sD2zR": "1920x1080", "tY4hL": "America/New_York", "pL8mC": "Win32", "cQ3vD": 24, "hK7jN": 8},
+        "uT4bX": {"mM9wZ": [], "kP8jY": []},
+        "tuTcS": int(time.time()),
+        "tDfxy": None,
+        "RtyJt": _random_string(36),
+    }
+    b64 = base64.b64encode(json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode()).decode()
+    return _random_string(6) + b64
+
+
+def _parse_chunk(chunk: str) -> str:
+    chunk = chunk.strip()
+    if not chunk or chunk == "[DONE]":
+        return ""
+    try:
+        return json.loads(chunk)["choices"][0]["delta"].get("content", "")
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return chunk
+
+
+def _parse_full(raw: str) -> str:
+    raw = re.sub(r'\[model:[^\]]*\]', '', raw).strip()
+    if raw.lstrip().startswith("data:"):
+        parts = []
+        for line in raw.splitlines():
+            if not line.startswith("data:"):
+                continue
+            parts.append(_parse_chunk(line[5:]))
+        text = "".join(parts).strip()
+        if text:
+            return text
+    try:
+        obj = json.loads(raw)
+        if isinstance(obj, dict):
+            for k in ("result", "text", "content", "output", "message", "response", "data"):
+                if obj.get(k):
+                    return str(obj[k]).strip()
+    except json.JSONDecodeError:
+        pass
+    return re.sub(r"<[^>]+>", "", raw).strip()
+
+
+def _fetch_upstream(prompt: str, model: str):
+    for attempt in range(MAX_RETRIES):
+        try:
+            sid = _random_string(32)
+            r = req.post(TOKEN_URL, data={"session_id": sid, "token": _build_fingerprint()}, headers=POST_HDRS, timeout=10)
+            r.raise_for_status()
+            token = r.json().get("token", "")
+            if not token:
+                raise RuntimeError("Token endpoint returned no token")
+            r2 = req.post(
+                WRITE_URL,
+                data={"text": prompt, "capcha": token, "model": model, "session_id": sid},
+                headers={**POST_HDRS, "Accept": "text/event-stream, application/json, */*"},
+                timeout=55,
+                stream=True,
+            )
+            if r2.status_code == 200:
+                return r2
+            if r2.status_code < 500:
+                raise RuntimeError(f"Upstream error {r2.status_code}")
+            raise RuntimeError(f"Upstream server error {r2.status_code}")
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            if attempt == MAX_RETRIES - 1:
+                raise RuntimeError(f"Failed after {MAX_RETRIES} attempts: {exc}") from exc
+            time.sleep(BACKOFF_BASE ** attempt)
+
+
 def _get_ip(h) -> str:
-    forwarded = h.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    fwd = h.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
     real = h.headers.get("x-real-ip", "")
     if real:
         return real
@@ -150,10 +170,39 @@ def _respond(h, status: int, data: dict):
     h.send_header("Content-Type",   "application/json")
     h.send_header("Content-Length", str(len(body)))
     h.send_header("Access-Control-Allow-Origin",  "*")
-    h.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+    h.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     h.send_header("Access-Control-Allow-Headers", "Content-Type")
     h.end_headers()
     h.wfile.write(body)
+
+
+def _run(h, prompt, model):
+    ip = _get_ip(h)
+    if _is_rate_limited(ip):
+        _respond(h, 429, {"error": "Rate limit exceeded. Try again shortly."})
+        return
+    if not prompt or not prompt.strip():
+        _respond(h, 400, {"error": "Missing required parameter: q, query, or prompt"})
+        return
+    prompt = prompt.strip()
+    if len(prompt) > MAX_PROMPT_LENGTH:
+        _respond(h, 400, {"error": f"Prompt exceeds maximum length of {MAX_PROMPT_LENGTH} characters"})
+        return
+    if not model:
+        model = _default_model()
+    if not _valid_model(model):
+        _respond(h, 400, {"error": f"Unknown model '{model}'", "valid_models": sorted(_models_cache["keys"])})
+        return
+    try:
+        t0       = time.time()
+        upstream = _fetch_upstream(prompt, model)
+        raw      = "".join(c for c in upstream.iter_content(chunk_size=None, decode_unicode=True) if c).strip()
+        text     = _parse_full(raw)
+        _respond(h, 200, {"response": text, "model": model, "elapsed_ms": round((time.time() - t0) * 1000)})
+    except RuntimeError:
+        _respond(h, 502, {"error": "Upstream request failed"})
+    except Exception:
+        _respond(h, 500, {"error": "Internal server error"})
 
 
 class handler(BaseHTTPRequestHandler):
@@ -162,79 +211,29 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin",  "*")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
     def do_GET(self):
-        _respond(self, 405, {
-            "error":          "GET not supported on /chat",
-            "reason":         "This endpoint requires a POST request with a JSON body containing a 'messages' array.",
-            "frontend_only":  True,
-            "how_to_use": {
-                "method":  "POST",
-                "url":     "https://vexa-ai.vercel.app/chat",
-                "headers": {"Content-Type": "application/json"},
-                "body": {
-                    "model":    "toolbaz-v4.5-fast",
-                    "messages": [
-                        {"role": "system",  "content": "You are a helpful assistant."},
-                        {"role": "user",    "content": "Your message here"},
-                    ],
-                },
-            },
-            "docs": "https://vexa-ai.vercel.app",
-        })
+        params = parse_qs(urlparse(self.path).query, keep_blank_values=True)
+        def _p(keys):
+            for k in keys:
+                v = params.get(k)
+                if v:
+                    return unquote_plus(v[0])
+            return ""
+        prompt = _p(["q", "query"])
+        model  = _p(["model"]) or _default_model()
+        _run(self, prompt, model)
 
     def do_POST(self):
-        ip = _get_ip(self)
-        if _is_rate_limited(ip):
-            _respond(self, 429, {"error": "Rate limit exceeded. Try again shortly."})
-            return
-
         length = int(self.headers.get("Content-Length", 0))
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
         except json.JSONDecodeError:
             _respond(self, 400, {"error": "Invalid JSON body"})
             return
-
-        messages = body.get("messages")
-        if not messages or not isinstance(messages, list) or len(messages) == 0:
-            _respond(self, 400, {"error": "Missing or empty 'messages' array"})
-            return
-
-        for i, msg in enumerate(messages):
-            if not isinstance(msg, dict):
-                _respond(self, 400, {"error": f"messages[{i}] must be an object"})
-                return
-            if msg.get("role") not in ("system", "user", "assistant"):
-                _respond(self, 400, {"error": f"messages[{i}].role must be 'system', 'user', or 'assistant'"})
-                return
-            if not isinstance(msg.get("content", ""), str):
-                _respond(self, 400, {"error": f"messages[{i}].content must be a string"})
-                return
-
-        model        = body.get("model") or DEFAULT_MODEL
-        valid_models = _get_valid_models()
-        if model not in valid_models:
-            model = DEFAULT_MODEL
-
-        total_chars = sum(len(m.get("content", "")) for m in messages)
-        if total_chars > MAX_PROMPT_LENGTH:
-            _respond(self, 400, {"error": f"Conversation exceeds maximum length of {MAX_PROMPT_LENGTH} characters"})
-            return
-
-        prompt = _messages_to_prompt(messages)
-
-        try:
-            t0   = time.time()
-            text = _toolbaz_complete(prompt, model)
-            _respond(self, 200, {
-                "message":      {"role": "assistant", "content": text},
-                "model":        model,
-                "elapsed_ms":   round((time.time() - t0) * 1000),
-                "prompt_chars": total_chars,
-            })
-        except Exception as e:
-            _respond(self, 502, {"error": f"Upstream request failed: {e}"})
+        prompt = body.get("q") or body.get("query") or body.get("prompt") or ""
+        model  = body.get("model") or _default_model()
+        _run(self, prompt, model)
