@@ -1,3 +1,5 @@
+![VEXA Banner](/images/banner.png)
+
 # Vexa AI
 
 Free REST API for text and image generation. No account, no API key, no setup.
