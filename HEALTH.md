@@ -16,32 +16,56 @@ Checks the full Toolbaz auth flow (page reachability + token exchange) and the S
 {
   "success": true,
   "status": "ok",
-  "timestamp": 1740888000,
-  "total_ms": 680,
+  "timestamp": 1773206104,
+  "total_ms": 8329,
   "checks": {
     "page": {
       "reachable": true,
       "status_code": 200,
-      "latency_ms": 107
+      "latency_ms": 66
     },
     "token": {
       "reachable": true,
       "token_received": true,
       "status_code": 200,
-      "latency_ms": 57
+      "latency_ms": 109
     },
     "image": {
       "reachable": true,
-      "worker_count": 42,
-      "model_count": 87,
-      "top_models": ["Deliberate", "Dreamshaper", "Realistic Vision", "AbsoluteReality", "epiCRealism"],
+      "worker_count": 14,
+      "model_count": 58,
+      "top_models": [
+        "stable_diffusion",
+        "Deliberate",
+        "ICBINP - I Can't Believe It's Not Photography",
+        "Nova Anime XL",
+        "AbsoluteReality"
+      ],
       "job_submitted": true,
-      "job_id": "abc123",
+      "job_id": "d5d34eb1-d264-4d0b-911d-1f5b6f5ed6fc",
       "is_possible": true,
-      "queue_position": 2,
-      "estimated_wait_s": 14,
-      "latency_ms": 516,
-      "debug": { "..." : "..." }
+      "queue_position": 0,
+      "estimated_wait_s": 0,
+      "latency_ms": 8150,
+      "debug": {
+        "worker_count": 14,
+        "model_count": 58,
+        "top_models": [
+          "stable_diffusion",
+          "Deliberate",
+          "ICBINP - I Can't Believe It's Not Photography",
+          "Nova Anime XL",
+          "AbsoluteReality"
+        ],
+        "horde_workers_latency_ms": 381,
+        "job_submit_status": 202,
+        "job_id": "d5d34eb1-d264-4d0b-911d-1f5b6f5ed6fc",
+        "job_submit_latency_ms": 6710,
+        "job_check_latency_ms": 886,
+        "is_possible": true,
+        "queue_position": 0,
+        "wait_time_s": 0
+      }
     }
   }
 }
