@@ -5,7 +5,7 @@
 Free REST API for text and image generation. No account, no API key, no setup.
 
 - **Text** — AI models via [Toolbaz](https://toolbaz.com)
-- **Images** — Community GPU cluster via [Stable Horde](https://aihorde.net)
+- **Images** — DeepAI text-to-image, proxied (no direct image URLs exposed)
 
 ```
 BASE_URL = https://your-domain.pages.dev
@@ -22,7 +22,8 @@ BASE_URL = https://your-domain.pages.dev
 | `GET POST` | `/query` | Single prompt → response |
 | `POST` | `/chat` | Multi-turn conversation (OpenAI-style messages array) |
 | `GET POST` | `/image` | Generate images |
-| `GET` | `/health` | Live status of Toolbaz and Stable Horde |
+| `GET` | `/image/proxy/:id` | Proxied image delivery — never exposes origin URL |
+| `GET` | `/health` | Live status of Toolbaz and DeepAI |
 
 ---
 
@@ -40,8 +41,11 @@ curl -X POST https://your-domain.pages.dev/chat \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "Hello!"}]}'
 
-# Generate an image
+# Generate an image (default: HD model, Speed preference)
 curl "https://your-domain.pages.dev/image?q=a+red+fox+in+a+neon+city"
+
+# Generate with specific preference
+curl "https://your-domain.pages.dev/image?q=a+castle&preference=quality"
 
 # List all models
 curl "https://your-domain.pages.dev/models"
@@ -93,15 +97,18 @@ In-memory per serverless instance, resets on cold starts.
 
 ```
 functions/
-├── index.js       # GET / - API documentation
-├── query.js       # GET POST /query
-├── chat.js        # POST /chat
-├── models.js      # GET /models
-├── health.js      # GET /health
-├── image.js       # GET POST /image
-└── 404.js         # Fallback 404 handler
-endpoints.json     # API documentation source
-wrangler.toml      # Cloudflare Pages config
+├── index.js          # GET / - API documentation
+├── query.js          # GET POST /query
+├── chat.js           # POST /chat
+├── models.js         # GET /models
+├── health.js         # GET /health
+├── image.js          # GET POST /image
+├── image/
+│   └── proxy/
+│       └── [[id]].js # GET /image/proxy/:id — proxied image delivery
+└── 404.js            # Fallback 404 handler
+endpoints.json        # API documentation source
+wrangler.toml         # Cloudflare Pages config
 ```
 
 ## Deploy
