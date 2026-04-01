@@ -4,8 +4,8 @@
 
 Free REST API for text and image generation. No account, no API key, no setup.
 
-- **Text** — AI models via [Toolbaz](https://toolbaz.com)
-- **Images** — DeepAI text-to-image, proxied (no direct image URLs exposed)
+- **Text** — AI models via Vexa
+- **Images** — Vexa Image Model text-to-image, proxied (no direct image URLs exposed)
 
 ```
 BASE_URL = 
@@ -23,7 +23,7 @@ BASE_URL =
 | `POST` | `/chat` | Multi-turn conversation (OpenAI-style messages array) |
 | `GET POST` | `/image` | Generate images |
 | `GET` | `/image/proxy/:id` | Proxied image delivery — never exposes origin URL |
-| `GET` | `/health` | Live status of Toolbaz and DeepAI |
+| `GET` | `/health` | Live status of Vexa Image Model |
 
 ---
 
@@ -34,7 +34,7 @@ BASE_URL =
 curl "/query?q=What+is+a+black+hole"
 
 # With a specific model
-curl "/query?q=Hello&model=toolbaz-v4.5-fast"
+curl "/query?q=Hello&model=vexa"
 
 # Multi-turn chat
 curl -X POST /chat \

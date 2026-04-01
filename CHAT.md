@@ -16,7 +16,7 @@ GET requests to `/chat` return a `405` with usage instructions rather than an er
 curl -X POST /chat \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "toolbaz-v4.5-fast",
+    "model": "vexa",
     "messages": [
       { "role": "system",    "content": "You are a helpful assistant. Be concise." },
       { "role": "user",      "content": "What is the speed of light?" },
@@ -31,7 +31,7 @@ curl -X POST /chat \\
 | Field | Required | Description |
 |-------|----------|-------------|
 | `messages` | yes | Array of message objects (at least one) |
-| `model` | no | Model ID. Defaults to `toolbaz-v4.5-fast`. If the given model is not in the valid list, falls back to default. See [`/models`](./MODELS.md). |
+| `model` | no | Model ID. Defaults to `vexa`. If the given model is not in the valid list, falls back to default. See [`/models`](./MODELS.md). |
 
 ### Message object
 
@@ -48,7 +48,7 @@ curl -X POST /chat \\
 {
   "success": true,
   "message": { "role": "assistant", "content": "It takes about 1.28 seconds." },
-  "model": "toolbaz-v4.5-fast",
+  "model": "vexa",
   "elapsed_ms": 980,
   "prompt_chars": 312
 }
@@ -58,7 +58,7 @@ curl -X POST /chat \\
 
 ## How Context Works
 
-Messages are concatenated into a single prompt before sending to Toolbaz:
+Messages are concatenated into a single prompt before sending to Vexa:
 
 ```
 [System]: {system content}
@@ -80,7 +80,7 @@ You are responsible for passing the full history each time.
 ```js
 const history = [{ role: 'system', content: 'You are a concise assistant.' }];
 
-async function chat(msg, model = 'toolbaz-v4.5-fast') {
+async function chat(msg, model = 'vexa') {
   history.push({ role: 'user', content: msg });
   const res = await fetch('/chat', {
     method: 'POST',
@@ -100,7 +100,7 @@ import requests
 
 history = [{'role': 'system', 'content': 'You are a concise assistant.'}]
 
-def chat(msg, model='toolbaz-v4.5-fast'):
+def chat(msg, model='vexa'):
     history.append({'role': 'user', 'content': msg})
     r = requests.post('/chat', json={'model': model, 'messages': history})
     reply = r.json()['message']['content']

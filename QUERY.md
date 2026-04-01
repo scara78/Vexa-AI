@@ -1,6 +1,6 @@
 # Query
 
-Send a single prompt to any available Toolbaz AI model and get a text response.
+Send a single prompt to any available Vexa AI model and get a text response.
 
 ```
 GET  /query
@@ -13,7 +13,7 @@ POST /query
 
 ```bash
 curl "/query?q=What+is+a+black+hole"
-curl "/query?q=Hello&model=toolbaz-v4.5-fast"
+curl "/query?q=Hello&model=vexa"
 ```
 
 ### Parameters
@@ -21,7 +21,7 @@ curl "/query?q=Hello&model=toolbaz-v4.5-fast"
 | Param | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `q` / `query` | yes | — | Your prompt |
-| `model` | no | `toolbaz-v4.5-fast` | Model ID. See [`/models`](./MODELS.md). |
+| `model` | no | `vexa` | Model ID. See [`/models`](./MODELS.md). |
 
 ---
 
@@ -30,7 +30,7 @@ curl "/query?q=Hello&model=toolbaz-v4.5-fast"
 ```bash
 curl -X POST /query \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Explain quantum computing", "model": "toolbaz-v4.5-fast"}'
+  -d '{"prompt": "Explain quantum computing", "model": "vexa"}'
 ```
 
 ### Body fields
@@ -48,7 +48,7 @@ curl -X POST /query \
 {
   "success": true,
   "response": "A black hole is a region of spacetime...",
-  "model": "toolbaz-v4.5-fast",
+  "model": "vexa",
   "elapsed_ms": 1243
 }
 ```
@@ -63,7 +63,7 @@ curl -X POST /query \
 const res = await fetch('/query', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ prompt: 'Hello!', model: 'toolbaz-v4.5-fast' })
+  body: JSON.stringify({ prompt: 'Hello!', model: 'vexa' })
 });
 const data = await res.json();
 console.log(data.response);
@@ -75,7 +75,7 @@ console.log(data.response);
 import requests
 r = requests.post('/query', json={
     'prompt': 'What is a neural network?',
-    'model': 'toolbaz-v4.5-fast',
+    'model': 'vexa',
 })
 print(r.json()['response'])
 ```

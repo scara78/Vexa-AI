@@ -4,7 +4,7 @@
 GET /health
 ```
 
-Returns live status of Toolbaz (text) and DeepAI (image) upstream services.
+Returns live status of Vexa (text) and Vexa Image Model (image) upstream services.
 
 ---
 
@@ -42,6 +42,6 @@ Returns live status of Toolbaz (text) and DeepAI (image) upstream services.
 | `status` | string | `ok` if all checks pass, `degraded` otherwise |
 | `timestamp` | number | Unix timestamp of the check |
 | `total_ms` | number | Total time for all checks in parallel |
-| `checks.page` | object | Toolbaz page reachability |
-| `checks.token` | object | Toolbaz token endpoint |
-| `checks.image` | object | DeepAI image endpoint reachability |
+| `checks.page` | object | Vexa page reachability |
+| `checks.token` | object | Vexa token endpoint |
+| `checks.image` | object | Vexa Image Model endpoint reachability |
