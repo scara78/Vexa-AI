@@ -7,6 +7,9 @@ const AIFREE_NONCE_URL = "https://aifreeforever.com/api/chat-nonce";
 const AIFREE_ANSWER_URL = "https://aifreeforever.com/api/generate-ai-answer";
 const WRITE_URL = "https://data.toolbaz.com/writing.php";
 const SESSION_ID = "yz3SJSGvR1ih8w5vfOmk9Fpd87iSGfUos54s";
+const POLLINATIONS_URL = "https://text.pollinations.ai/openai";
+const POLLINATIONS_MODELS = new Set(["pol-openai-fast"]);
+const POLLINATIONS_MODEL_KEYS = ["pol-openai-fast"];
 const HDRS = {
     "Referer": TOOLBAZ_PAGE_URL,
     "Origin": "https://toolbaz.com",
@@ -103,7 +106,7 @@ async function fetchAvailableModels() {
         if (!selectMatch) return ["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"];
         const models = ["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"];
         const seen = new Set(models);
-        for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'>\s]+)["']?/gi)) {
+        for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)/gi)) {
             const val = m[1].trim();
             if (val && !seen.has(val)) { seen.add(val); models.push(val); }
         }
@@ -111,6 +114,25 @@ async function fetchAvailableModels() {
     } catch (_) {
         return ["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"];
     }
+}
+
+async function probePollinations(model) {
+    const polModel = model.replace(/^pol-/, "");
+    const r = await fetch(POLLINATIONS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA },
+        body: JSON.stringify({
+            model: polModel,
+            messages: [{ role: "user", content: HEALTH_PROBE }],
+            temperature: 0.7,
+            stream: false,
+            private: true,
+        }),
+    });
+    if (!r.ok) throw new Error(`Pollinations error ${r.status}`);
+    const j = await r.json();
+    const text = (j.choices?.[0]?.message?.content || "").trim();
+    if (!text) throw new Error("Empty response");
 }
 
 async function probeVexa(model) {
@@ -217,7 +239,9 @@ async function probeToolbaz(model) {
 async function checkModel(model) {
     const t0 = Date.now();
     try {
-        if (DEEPAI_MODELS.has(model)) {
+        if (POLLINATIONS_MODEL_KEYS.includes(model)) {
+            await probePollinations(model);
+        } else if (DEEPAI_MODELS.has(model)) {
             await probeVexa(model);
         } else if (AIFREE_MODELS.has(model)) {
             await probeAiFree(model);
@@ -288,7 +312,7 @@ export async function onRequest({ request }) {
     }
 
     const tStart = Date.now();
-    const allModels = await fetchAvailableModels();
+    const allModels = [...await fetchAvailableModels(), POLLINATIONS_MODEL_KEYS[0]];
 
     const [page, token, image, ...modelResults] = await Promise.all([
         checkPage(),
@@ -301,9 +325,15 @@ export async function onRequest({ request }) {
     for (let i = 0; i < allModels.length; i++) {
         models[allModels[i]] = modelResults[i];
     }
+    const polResult = models[POLLINATIONS_MODEL_KEYS[0]];
+    for (const key of POLLINATIONS_MODEL_KEYS.slice(1)) {
+        models[key] = polResult;
+    }
 
-    const failedModels = allModels.filter((m, i) => !modelResults[i].ok);
-    const allModelsOk = failedModels.length === 0;
+    const baseModels = allModels.filter(m => !POLLINATIONS_MODEL_KEYS.slice(1).includes(m));
+    const failedModels = baseModels.filter((m, i) => !modelResults[baseModels.indexOf(m)] && !modelResults[i].ok);
+    const polFailed = polResult && !polResult.ok;
+    const allModelsOk = failedModels.length === 0 && !polFailed;
     const overall = page.reachable && token.reachable && token.token_received && image.reachable && allModelsOk;
 
     return Response.json({

@@ -3,8 +3,17 @@ const TOOLBAZ_PAGE_URL = "https://toolbaz.com/writer/chat-gpt-alternative";
 const CACHE_TTL = 300000;
 const DEFAULT_TEXT_MODEL = "vexa";
 
+const POLLINATIONS_URL = "https://text.pollinations.ai/openai";
+const POLLINATIONS_MODELS_LIST = [
+    { key: "pol-openai-fast", label: "Pollinations GPT-OSS", provider: "Pollinations.ai", speed: 280, quality: 72 },
+];
+
 const IMAGE_MODELS = [
-    { name: "hd", label: "HD", description: "Standard HD generation" },
+    { name: "flux", label: "Flux", description: "Fast, high quality — default" },
+    { name: "turbo", label: "Flux Turbo", description: "Fastest generation" },
+    { name: "kontext", label: "Flux Kontext", description: "Instruction-following edits" },
+    { name: "seedream", label: "Seedream 3", description: "ByteDance — photorealistic" },
+    { name: "nanobanana", label: "Nano Banana", description: "Gemini-powered — high detail" },
 ];
 
 const cache = { textModels: {}, default: DEFAULT_TEXT_MODEL, ts: 0 };
@@ -15,13 +24,13 @@ function unescapeHtml(str) {
 
 function scrapeTextModels(html) {
     const selectMatch = html.match(/<select[^>]*\bname=["']?model["']?[^>]*>([\s\S]*?)(?:<\/select>|$)/i);
-    if (!selectMatch) return [{ vexa: { label: "Vexa", provider: "Vexa-AI", speed: 0, quality: 0 } }, DEFAULT_TEXT_MODEL];
+    if (!selectMatch) return [{ vexa: { label: "Vexa", provider: "Vexa-AI", speed: 0, quality: 0 } }, DEFAULT_TEXT_MODEL, POLLINATIONS_MODELS_LIST.map(m => ({ key: m.key, label: m.label, provider: m.provider }))];
     const block = selectMatch[1];
 
     const valueToLabel = {};
     const keys = [];
     const seen = new Set();
-    for (const m of block.matchAll(/<option[^>]*\bvalue=["']?([^"'>\s]+)["']?[^>]*>\s*([^\n<]+)/gi)) {
+    for (const m of block.matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)[^>]*>\s*([^\n<]+)/gi)) {
         const val = unescapeHtml(m[1].trim());
         const label = unescapeHtml(m[2].trim());
         if (val && !seen.has(val)) { keys.push(val); seen.add(val); valueToLabel[val] = label; }
@@ -53,35 +62,39 @@ function scrapeTextModels(html) {
         if (qlt) qualityMap[val] = parseInt(qlt[1]);
     });
 
-    const BLACKLIST = new Set(["gpt-5", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
+    const BLACKLIST = new Set(["gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
 
     const models = {};
     models["vexa"] = { label: "Vexa", provider: "Vexa-AI", speed: 0, quality: 0 };
     models["gemini-2.5-flash-lite"] = { label: "Gemini-2.5-Flash-Lite", provider: "Google", speed: 180, quality: 72 };
     models["gpt-4.1-nano"] = { label: "GPT-4.1-Nano", provider: "OpenAI", speed: 320, quality: 70 };
     models["deepseek-v3.2"] = { label: "DeepSeek-V3.2", provider: "DeepSeek", speed: 280, quality: 81 };
+    for (const pm of POLLINATIONS_MODELS_LIST) {
+        models[pm.key] = { label: pm.label, provider: pm.provider, speed: pm.speed, quality: pm.quality };
+    }
     for (const val of keys) {
         if (BLACKLIST.has(val)) continue;
         models[val] = { label: valueToLabel[val] || val, provider: providerMap[val] || "", speed: speedMap[val] || 0, quality: qualityMap[val] || 0 };
     }
-    return [models, DEFAULT_TEXT_MODEL];
+    return [models, DEFAULT_TEXT_MODEL, POLLINATIONS_MODELS_LIST.map(m => ({ key: m.key, label: m.label, provider: m.provider }))];
 }
 
 async function fetchTextModels() {
     try {
         const r = await fetch(TOOLBAZ_PAGE_URL, { headers: { "User-Agent": UA } });
-        if (!r.ok) return [{ vexa: { label: "Vexa", provider: "Vexa-AI", speed: 0, quality: 0 } }, DEFAULT_TEXT_MODEL];
+        if (!r.ok) return [{ vexa: { label: "Vexa", provider: "Vexa-AI", speed: 0, quality: 0 } }, DEFAULT_TEXT_MODEL, POLLINATIONS_MODELS_LIST.map(m => ({ key: m.key, label: m.label, provider: m.provider }))];
         const html = await r.text();
         return scrapeTextModels(html);
-    } catch (_) { return [{ vexa: { label: "Vexa", provider: "Vexa-AI", speed: 0, quality: 0 } }, DEFAULT_TEXT_MODEL]; }
+    } catch (_) { return [{ vexa: { label: "Vexa", provider: "Vexa-AI", speed: 0, quality: 0 } }, DEFAULT_TEXT_MODEL, POLLINATIONS_MODELS_LIST.map(m => ({ key: m.key, label: m.label, provider: m.provider }))]; }
 }
 
 async function refresh() {
     const now = Date.now();
     if (cache.textModels && Object.keys(cache.textModels).length > 0 && now - cache.ts < CACHE_TTL) return cache;
-    const [textModels, def] = await fetchTextModels();
+    const [textModels, def, pollinationsModels] = await fetchTextModels();
     cache.textModels = textModels;
     cache.default = def;
+    cache.pollinationsModels = pollinationsModels;
     cache.ts = now;
     return cache;
 }
@@ -108,5 +121,6 @@ export async function onRequest({ request }) {
         default: c.default,
         models: c.textModels,
         image_models: IMAGE_MODELS,
+        pollinations_models: c.pollinationsModels,
     }, { status: 200, headers: corsHeaders() });
 }

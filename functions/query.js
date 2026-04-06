@@ -3,6 +3,9 @@ const PAGE_URL = "https://toolbaz.com/writer/chat-gpt-alternative";
 const TOKEN_URL = "https://data.toolbaz.com/token.php";
 const WRITE_URL = "https://data.toolbaz.com/writing.php";
 const DEEPAI_API = "https://api.deepai.org";
+const POLLINATIONS_URL = "https://text.pollinations.ai/openai";
+const POLLINATIONS_MODELS = new Set(["pol-openai-fast"]);
+
 const POST_HDRS = {
   "User-Agent": UA,
   "Referer": PAGE_URL,
@@ -149,18 +152,14 @@ async function refreshModels() {
     const html = await r.text();
     const selectMatch = html.match(/<select[^>]*\bname=["']?model["']?[^>]*>([\s\S]*?)(?:<\/select>|$)/i);
     if (!selectMatch) return;
-    const keys = [];
-    const seen = new Set();
-    for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'>\s]+)["']?/gi)) {
+    const keys = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
+    const seen = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
+    for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)/gi)) {
       const k = m[1].trim();
-      if (k && !seen.has(k)) { keys.push(k); seen.add(k); }
+      if (k && !seen.has(k)) { keys.add(k); seen.add(k); }
     }
-    if (keys.length) {
-      modelsCache.keys = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
-      modelsCache.keys.add("vexa");
-      modelsCache.keys.add("gemini-2.5-flash-lite");
-      modelsCache.keys.add("gpt-4.1-nano");
-      modelsCache.keys.add("deepseek-v3.2");
+    if (keys.size) {
+      modelsCache.keys = keys;
       modelsCache.default = DEFAULT_MODEL;
       modelsCache.ts = now;
     }
@@ -240,6 +239,24 @@ async function fetchVexa(prompt, model = "standard") {
   return full.trim();
 }
 
+async function pollinationsComplete(prompt, model) {
+  const polModel = model.replace(/^pol-/, "");
+  const r = await fetch(POLLINATIONS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "User-Agent": UA },
+    body: JSON.stringify({
+      model: polModel,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      stream: false,
+      private: true,
+    }),
+  });
+  if (!r.ok) throw new Error(`Pollinations error ${r.status}`);
+  const j = await r.json();
+  return (j.choices?.[0]?.message?.content || "").trim();
+}
+
 async function fetchUpstream(prompt, model) {
   if (model === "vexa") return fetchVexa(prompt);
   const sid = randomString(32);
@@ -292,20 +309,22 @@ async function run(prompt, model, ip) {
   }
   await refreshModels();
   if (!model) model = DEFAULT_MODEL;
-  if (model !== "vexa" && modelsCache.keys.size > 0 && !modelsCache.keys.has(model)) {
+  if (!POLLINATIONS_MODELS.has(model) && model !== "vexa" && modelsCache.keys.size > 0 && !modelsCache.keys.has(model)) {
     return Response.json({ success: false, error: `Unknown model '${model}'`, valid_models: [...modelsCache.keys].sort() }, { status: 400, headers: corsHeaders() });
   }
   const t0 = Date.now();
   try {
     const DEEPAI_MODELS = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
     const deepaiModel = model === "vexa" ? "standard" : model;
-    const raw = DEEPAI_MODELS.has(model)
-      ? await fetchVexa(prompt, deepaiModel)
-      : model === "gpt-5"
-        ? await aiFreeComplete(prompt, [{ role: "user", content: prompt }], model)
-        : await fetchUpstream(prompt, model);
-    const text = DEEPAI_MODELS.has(model) || model === "gpt-5" ? raw : parseFull(raw);
-    const source = DEEPAI_MODELS.has(model) ? "deepai.org" : model === "gpt-5" ? "aifreeforever.com" : "toolbaz.com";
+    const raw = POLLINATIONS_MODELS.has(model)
+      ? await pollinationsComplete(prompt, model)
+      : DEEPAI_MODELS.has(model)
+        ? await fetchVexa(prompt, deepaiModel)
+        : model === "gpt-5"
+          ? await aiFreeComplete(prompt, [{ role: "user", content: prompt }], model)
+          : await fetchUpstream(prompt, model);
+    const text = POLLINATIONS_MODELS.has(model) || DEEPAI_MODELS.has(model) || model === "gpt-5" ? raw : parseFull(raw);
+    const source = POLLINATIONS_MODELS.has(model) ? "pollinations.ai" : DEEPAI_MODELS.has(model) ? "deepai.org" : model === "gpt-5" ? "aifreeforever.com" : "toolbaz.com";
     return Response.json({ success: true, response: text, model, elapsed_ms: Date.now() - t0, source }, { status: 200, headers: corsHeaders() });
   } catch (_) {
     return Response.json({ success: false, error: "Upstream request failed" }, { status: 502, headers: corsHeaders() });

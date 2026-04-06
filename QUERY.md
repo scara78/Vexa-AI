@@ -1,6 +1,6 @@
 # Query
 
-Send a single prompt to any available Vexa AI model and get a text response.
+Send a single prompt to any available model and get a text response.
 
 ```
 GET  /query
@@ -13,7 +13,8 @@ POST /query
 
 ```bash
 curl "/query?q=What+is+a+black+hole"
-curl "/query?q=Hello&model=vexa"
+curl "/query?q=Hello&model=toolbaz-v4.5-fast"
+curl "/query?q=Hello&model=pol-openai-fast"
 ```
 
 ### Parameters
@@ -49,9 +50,18 @@ curl -X POST /query \
   "success": true,
   "response": "A black hole is a region of spacetime...",
   "model": "vexa",
-  "elapsed_ms": 1243
+  "elapsed_ms": 1243,
+  "source": "deepai.org"
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | bool | `true` on success |
+| `response` | string | Model response text |
+| `model` | string | Model used |
+| `elapsed_ms` | number | Time to generate |
+| `source` | string | Upstream used — `deepai.org`, `toolbaz.com`, `aifreeforever.com`, or `pollinations.ai` |
 
 ---
 
@@ -97,6 +107,6 @@ print(r.json()['response'])
 |--------|-------|
 | `400` | `Missing required parameter: q, query, or prompt` |
 | `400` | `Prompt exceeds maximum length of 4000 characters` |
+| `400` | `Unknown model 'x'` |
 | `429` | `Rate limit exceeded. Try again shortly.` |
 | `502` | `Upstream request failed` |
-| `500` | `Internal server error` |

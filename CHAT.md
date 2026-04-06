@@ -6,15 +6,15 @@ Multi-turn conversation endpoint. Accepts an OpenAI-style `messages` array and h
 POST /chat
 ```
 
-GET requests to `/chat` return a `405` with usage instructions rather than an error, explaining how to call the endpoint correctly.
+GET requests to `/chat` return a `405` with usage instructions rather than an error.
 
 ---
 
 ## Request
 
 ```bash
-curl -X POST /chat \\
-  -H "Content-Type: application/json" \\
+curl -X POST /chat \
+  -H "Content-Type: application/json" \
   -d '{
     "model": "vexa",
     "messages": [
@@ -31,13 +31,13 @@ curl -X POST /chat \\
 | Field | Required | Description |
 |-------|----------|-------------|
 | `messages` | yes | Array of message objects (at least one) |
-| `model` | no | Model ID. Defaults to `vexa`. If the given model is not in the valid list, falls back to default. See [`/models`](./MODELS.md). |
+| `model` | no | Model ID. Defaults to `vexa`. Falls back to `vexa` if the given model is not valid. See [/models](./MODELS.md). |
 
 ### Message object
 
 | Field | Required | Values |
 |-------|----------|--------|
-| `role` | yes | `system` \| `user` \| `assistant` |
+| `role` | yes | `system` or `user` or `assistant` |
 | `content` | yes | string |
 
 ---
@@ -54,22 +54,29 @@ curl -X POST /chat \\
 }
 ```
 
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | bool | `true` on success |
+| `message` | object | Assistant reply with `role` and `content` |
+| `model` | string | Model used |
+| `elapsed_ms` | number | Time to generate |
+| `prompt_chars` | number | Total character count of all messages sent |
+
 ---
 
 ## How Context Works
 
-Messages are concatenated into a single prompt before sending to Vexa:
+For Toolbaz-routed models, messages are concatenated into a single prompt:
 
 ```
 [System]: {system content}
 
-User: {first user message}
-Assistant: {first assistant message}
+User: {first user message}Assistant: {first assistant message}
 User: {second user message}
 Assistant:
 ```
 
-You are responsible for passing the full history each time.
+For DeepAI and Pollinations models the full messages array is sent natively. You are responsible for passing the full history each turn.
 
 ---
 

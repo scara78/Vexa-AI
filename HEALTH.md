@@ -4,7 +4,7 @@
 GET /health
 ```
 
-Returns live status of Vexa (text) and Vexa Image Model (image) upstream services.
+Returns live status of all upstream services — Toolbaz page, token endpoint, DeepAI image endpoint, and a live probe of every text model.
 
 ---
 
@@ -20,22 +20,23 @@ Returns live status of Vexa (text) and Vexa Image Model (image) upstream service
     "page": {
       "reachable": true,
       "status_code": 200,
-      "latency_ms": 310
+      "latency_ms": 216
     },
     "token": {
       "reachable": true,
       "token_received": true,
       "status_code": 200,
-      "latency_ms": 290
+      "latency_ms": 467
     },
     "image": {
       "reachable": true,
-      "status_code": 200,
-      "latency_ms": 212
+      "status_code": 401,
+      "latency_ms": 295
     },
     "models": {
-      "vexa": { "ok": true, "latency_ms": 340 },
-      "gemini-2.5-flash-lite": { "ok": true, "latency_ms": 410 },
+      "vexa": { "ok": true, "latency_ms": 924 },
+      "toolbaz-v4.5-fast": { "ok": true, "latency_ms": 1902 },
+      "pol-openai-fast": { "ok": true, "latency_ms": 778 },
       "gpt-4.1-nano": { "ok": false, "error": "DeepAI error 429", "latency_ms": 120 }
     }
   },
@@ -47,12 +48,21 @@ Returns live status of Vexa (text) and Vexa Image Model (image) upstream service
 |-------|------|-------------|
 | `status` | string | `ok` if all checks pass, `degraded` otherwise |
 | `timestamp` | number | Unix timestamp of the check |
-| `total_ms` | number | Total time for all checks in parallel |
-| `checks.page` | object | Vexa page reachability |
-| `checks.token` | object | Vexa token endpoint |
-| `checks.image` | object | Vexa Image Model endpoint reachability |
+| `total_ms` | number | Total time for all checks run in parallel |
+| `checks.page` | object | Toolbaz page reachability |
+| `checks.token` | object | Toolbaz token endpoint — `token_received` confirms a valid capcha token was returned |
+| `checks.image` | object | DeepAI image endpoint — `401` is expected and treated as reachable |
 | `checks.models` | object | Per-model live probe results keyed by model ID |
 | `checks.models[id].ok` | boolean | Whether the model responded successfully |
-| `checks.models[id].latency_ms` | number | Round-trip time for this model's probe |
-| `checks.models[id].error` | string | Error message if `ok` is `false` |
+| `checks.models[id].latency_ms` | number | Round-trip time for the probe |
+| `checks.models[id].error` | string | Error detail if `ok` is `false` |
 | `failed_models` | array | Model IDs that failed — omitted when all models pass |
+
+---
+
+## Notes
+
+- All model probes run in parallel — `total_ms` reflects the slowest check, not the sum.
+- The Pollinations probe (`pol-openai-fast`) probes a single model and copies the result to all Pollinations model keys to avoid rate limiting.
+- The image check probing `401` is expected — DeepAI requires auth for HEAD requests but generation still works via the keyless flow.
+- `status` is `degraded` if any model probe fails or any upstream is unreachable.

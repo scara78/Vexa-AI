@@ -1,5 +1,7 @@
 const DEEPAI_URL = "https://api.deepai.org/api/text2img";
+const POLLINATIONS_IMAGE_URL = "https://image.pollinations.ai/prompt/";
 const MODELS = { hd: "hd" };
+const POLLINATIONS_MODELS = new Set(["flux", "turbo-img", "kontext", "seedream", "nanobanana"]);
 const PREFERENCES = { speed: "turbo", quality: "quality" };
 const DEFAULT_MODEL = "hd";
 const DEFAULT_PREFERENCE = "speed";
@@ -94,6 +96,17 @@ async function callDeepAI(prompt, modelVer, prefKey) {
     return data.output_url;
 }
 
+async function callPollinations(prompt, model) {
+    const polModel = model === "turbo-img" ? "turbo" : model;
+    const seed = Math.floor(Math.random() * 999999);
+    const url = `${POLLINATIONS_IMAGE_URL}${encodeURIComponent(prompt)}?model=${polModel}&width=1024&height=1024&nologo=true&private=true&seed=${seed}`;
+    const res = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+    });
+    if (!res.ok) throw new Error(`Pollinations error ${res.status}`);
+    return url;
+}
+
 function parseGet(url) {
     const sp = url.searchParams;
     return {
@@ -121,33 +134,41 @@ async function run(args, baseUrl) {
         return Response.json({ success: false, error: "Missing required parameter: q or prompt" }, { status: 400, headers: corsHeaders() });
     }
 
-    const modelVer = MODELS[model];
-    if (!modelVer) {
-        return Response.json({ success: false, error: "Invalid model. Valid value: hd" }, { status: 400, headers: corsHeaders() });
-    }
+    const isPollinations = POLLINATIONS_MODELS.has(model);
+    const isDeepAI = model in MODELS;
 
-    const prefKey = PREFERENCES[preference];
-    if (!prefKey) {
-        return Response.json({ success: false, error: "Invalid preference. Valid values: speed, quality" }, { status: 400, headers: corsHeaders() });
+    if (!isPollinations && !isDeepAI) {
+        return Response.json({ success: false, error: `Invalid model. Valid values: hd, ${[...POLLINATIONS_MODELS].join(", ")}` }, { status: 400, headers: corsHeaders() });
     }
 
     const t0 = Date.now();
     let upstreamUrl;
+
     try {
-        upstreamUrl = await callDeepAI(String(prompt).trim().slice(0, 1000), modelVer, prefKey);
+        if (isPollinations) {
+            upstreamUrl = await callPollinations(String(prompt).trim().slice(0, 1000), model);
+        } else {
+            const prefKey = PREFERENCES[preference];
+            if (!prefKey) {
+                return Response.json({ success: false, error: "Invalid preference. Valid values: speed, quality" }, { status: 400, headers: corsHeaders() });
+            }
+            upstreamUrl = await callDeepAI(String(prompt).trim().slice(0, 1000), MODELS[model], prefKey);
+        }
     } catch (e) {
         return Response.json({ success: false, error: `Generation failed: ${e.message}` }, { status: 502, headers: corsHeaders() });
     }
 
     const proxyId = await makeProxyId(upstreamUrl);
     const proxyUrl = `${baseUrl}/image/proxy/${proxyId}`;
+    const source = isPollinations ? "pollinations.ai" : "deepai.org";
 
     return Response.json({
         success: true,
         prompt: String(prompt).trim().slice(0, 1000),
         model,
-        preference,
+        ...(isDeepAI && { preference }),
         proxy_url: proxyUrl,
+        source,
         elapsed_ms: Date.now() - t0,
     }, { status: 200, headers: corsHeaders() });
 }

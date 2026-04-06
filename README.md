@@ -4,8 +4,8 @@
 
 Free REST API for text and image generation. No account, no API key, no setup.
 
-- **Text** — AI models via Vexa
-- **Images** — Vexa Image Model text-to-image, proxied (no direct image URLs exposed)
+- **Text** — 25+ AI models via Toolbaz, DeepAI, AIFreeForever, and Pollinations
+- **Images** — HD (DeepAI) + Pollinations models (Flux, Turbo, Kontext, Seedream, Nano Banana), proxied (no direct image URLs exposed)
 
 ```
 BASE_URL = https://vexa-ai.pages.dev
@@ -18,12 +18,12 @@ BASE_URL = https://vexa-ai.pages.dev
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/` | API documentation as JSON |
-| `GET` | `/models` | All text + image models (live-scraped, zero hardcoding) |
+| `GET` | `/models` | All text + image models |
 | `GET POST` | `/query` | Single prompt → response |
 | `POST` | `/chat` | Multi-turn conversation (OpenAI-style messages array) |
 | `GET POST` | `/image` | Generate images |
 | `GET` | `/image/proxy/:id` | Proxied image delivery — never exposes origin URL |
-| `GET` | `/health` | Live status of all text models and image upstream |
+| `GET` | `/health` | Live status of all models and upstreams |
 
 ---
 
@@ -34,17 +34,23 @@ BASE_URL = https://vexa-ai.pages.dev
 curl "/query?q=What+is+a+black+hole"
 
 # With a specific model
-curl "/query?q=Hello&model=vexa"
+curl "/query?q=Hello&model=toolbaz-v4.5-fast"
+
+# With Pollinations
+curl "/query?q=Hello&model=pol-openai-fast"
 
 # Multi-turn chat
 curl -X POST /chat \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "Hello!"}]}'
 
-# Generate an image (default: HD model, Speed preference)
+# Generate an image (default: HD model, speed preference)
 curl "/image?q=a+red+fox+in+a+neon+city"
 
-# Generate with specific preference
+# Generate with Pollinations Flux
+curl "/image?q=a+castle&model=flux"
+
+# Generate with quality preference (HD only)
 curl "/image?q=a+castle&preference=quality"
 
 # List all models
@@ -107,7 +113,6 @@ functions/
 │   └── proxy/
 │       └── [[id]].js # GET /image/proxy/:id — proxied image delivery
 └── 404.js            # Fallback 404 handler
-endpoints.json        # API documentation source
 wrangler.toml         # Cloudflare Pages config
 ```
 
@@ -127,4 +132,4 @@ wrangler pages dev .
 # → http://127.0.0.1:8788
 ```
 
-No dependencies required - pure JavaScript with Cloudflare Pages Functions.
+No dependencies required — pure JavaScript with Cloudflare Pages Functions.

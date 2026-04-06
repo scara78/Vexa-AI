@@ -4,13 +4,8 @@ const TOKEN_URL = "https://data.toolbaz.com/token.php";
 const WRITE_URL = "https://data.toolbaz.com/writing.php";
 const DEEPAI_API = "https://api.deepai.org";
 const SESSION_ID = "yz3SJSGvR1ih8w5vfOmk9Fpd87iSGfUos54s";
-const HDRS = {
-    "Referer": TOOLBAZ_PAGE_URL,
-    "Origin": "https://toolbaz.com",
-    "X-Requested-With": "XMLHttpRequest",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "User-Agent": UA,
-};
+const POLLINATIONS_URL = "https://text.pollinations.ai/openai";
+const POLLINATIONS_MODELS = new Set(["pol-openai-fast"]);
 
 const MAX_PROMPT_LENGTH = 16000;
 const MAX_REQUESTS = 20;
@@ -152,7 +147,7 @@ async function getValidModels() {
         models.add("gpt-4.1-nano");
         models.add("deepseek-v3.2");
         const seen = new Set(["vexa"]);
-        for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'>\s]+)["']?/gi)) {
+        for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)/gi)) {
             const val = m[1].trim();
             if (val && !seen.has(val)) { seen.add(val); models.add(val); }
         }
@@ -203,6 +198,24 @@ async function vexaComplete(prompt, messages, model = "standard") {
         full += chunk;
     }
     return full.trim();
+}
+
+async function pollinationsComplete(messages, model) {
+    const polModel = model.replace(/^pol-/, "");
+    const r = await fetch(POLLINATIONS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA },
+        body: JSON.stringify({
+            model: polModel,
+            messages,
+            temperature: 0.7,
+            stream: false,
+            private: true,
+        }),
+    });
+    if (!r.ok) throw new Error(`Pollinations error ${r.status}`);
+    const j = await r.json();
+    return (j.choices?.[0]?.message?.content || "").trim();
 }
 
 async function toolbazComplete(prompt, model) {
@@ -316,16 +329,19 @@ export async function onRequest({ request }) {
     }
     const prompt = messagesToPrompt(messages);
     const validModels = await getValidModels();
-    if (!validModels.has(model)) model = DEFAULT_MODEL;
+    if (!POLLINATIONS_MODELS.has(model) && !validModels.has(model)) model = DEFAULT_MODEL;
     const t0 = Date.now();
     try {
         const DEEPAI_MODELS = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
         const deepaiModel = model === "vexa" ? "standard" : model;
-        const text = DEEPAI_MODELS.has(model)
-            ? await vexaComplete(prompt, messages, deepaiModel)
-            : model === "gpt-5"
-                ? await aiFreeComplete(lastUserMsg, messages, model)
-                : await toolbazComplete(prompt, model);
+        const lastUserMsg = messages.filter(m => m.role === "user").at(-1)?.content || "";
+        const text = POLLINATIONS_MODELS.has(model)
+            ? await pollinationsComplete(messages, model)
+            : DEEPAI_MODELS.has(model)
+                ? await vexaComplete(prompt, messages, deepaiModel)
+                : model === "gpt-5"
+                    ? await aiFreeComplete(lastUserMsg, messages, model)
+                    : await toolbazComplete(prompt, model);
         return Response.json({
             success: true,
             message: { role: "assistant", content: text },
