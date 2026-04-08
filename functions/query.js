@@ -264,21 +264,34 @@ async function fetchUpstream(prompt, model) {
   let lastErr;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      console.log(`Attempt ${attempt + 1}: Getting token for model ${model}`);
       const tr = await fetch(TOKEN_URL, { method: "POST", headers: POST_HDRS, body: tokenBody.toString() });
-      if (!tr.ok) throw new Error(`Token request failed: ${tr.status}`);
+      if (!tr.ok) {
+        console.log(`Token request failed: ${tr.status}`);
+        throw new Error(`Token request failed: ${tr.status}`);
+      }
       const tj = await tr.json();
       const token = tj.token || "";
-      if (!token) throw new Error("Token endpoint returned no token");
+      if (!token) {
+        console.log("Token endpoint returned no token");
+        throw new Error("Token endpoint returned no token");
+      }
+      console.log(`Got token, making write request for model ${model}`);
       const writeBody = new URLSearchParams({ text: prompt, capcha: token, model, session_id: sid });
       const wr = await fetch(WRITE_URL, {
         method: "POST",
         headers: { ...POST_HDRS, Accept: "text/event-stream, application/json, */*" },
         body: writeBody.toString(),
       });
-      if (wr.ok) return await wr.text();
+      if (wr.ok) {
+        console.log(`Write request successful for model ${model}`);
+        return await wr.text();
+      }
+      console.log(`Write request failed: ${wr.status}`);
       if (wr.status < 500) throw new Error(`Upstream error ${wr.status}`);
       lastErr = new Error(`Upstream server error ${wr.status}`);
     } catch (e) {
+      console.log(`Error in fetchUpstream: ${e.message}`);
       lastErr = e;
       if (e.message.startsWith("Upstream error")) throw e;
     }
