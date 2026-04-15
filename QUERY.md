@@ -13,8 +13,7 @@ POST /query
 
 ```bash
 curl "/query?q=What+is+a+black+hole"
-curl "/query?q=Hello&model=toolbaz-v4.5-fast"
-curl "/query?q=Hello&model=pol-openai-fast"
+curl "/query?q=Hello&model=your-model-id"
 ```
 
 ### Parameters
@@ -31,7 +30,7 @@ curl "/query?q=Hello&model=pol-openai-fast"
 ```bash
 curl -X POST /query \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Explain quantum computing", "model": "vexa"}'
+  -d '{"prompt": "Explain quantum computing", "model": "your-model-id"}'
 ```
 
 ### Body fields
@@ -73,7 +72,7 @@ curl -X POST /query \
 const res = await fetch('/query', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ prompt: 'Hello!', model: 'vexa' })
+  body: JSON.stringify({ prompt: 'Hello!', model: 'your-model-id' })
 });
 const data = await res.json();
 console.log(data.response);
@@ -85,7 +84,7 @@ console.log(data.response);
 import requests
 r = requests.post('/query', json={
     'prompt': 'What is a neural network?',
-    'model': 'vexa',
+    'model': 'your-model-id',
 })
 print(r.json()['response'])
 ```

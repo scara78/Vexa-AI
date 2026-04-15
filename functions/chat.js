@@ -6,11 +6,18 @@ const DEEPAI_API = "https://api.deepai.org";
 const SESSION_ID = "yz3SJSGvR1ih8w5vfOmk9Fpd87iSGfUos54s";
 const POLLINATIONS_URL = "https://text.pollinations.ai/openai";
 const POLLINATIONS_MODELS = new Set(["pol-openai-fast"]);
+const DEEPAI_CHAT_URL = "https://deepai.org/chat";
 
 const MODELS_CACHE_TTL = 300000;
 const DEFAULT_MODEL = "vexa";
 
-const modelsCache = { models: new Set(), ts: 0 };
+const DEEPAI_MODEL_OVERRIDES = new Set([
+    "vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2",
+    "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout",
+    "qwen3-30b", "gpt-5-nano", "gpt-oss-120b",
+]);
+
+const modelsCache = { toolbazModels: new Set(), deepaiModels: new Set(), ts: 0 };
 
 const AIFREE_NONCE_URL = "https://aifreeforever.com/api/chat-nonce";
 const AIFREE_ANSWER_URL = "https://aifreeforever.com/api/generate-ai-answer";
@@ -137,32 +144,96 @@ function generateTryitKey() {
     return `tryit-${r}-${h3}`;
 }
 
+function unescapeHtml(str) {
+    return str.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+}
+
+function labelToKey(label) {
+    return label
+        .toLowerCase()
+        .replace(/\binstruct\b/gi, "")
+        .replace(/\binstant\b/gi, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/[^a-z0-9.-]/g, "")
+        .replace(/-$/g, "");
+}
+
+async function scrapeDeepAIFreeModels() {
+    try {
+        const r = await fetch(DEEPAI_CHAT_URL, { headers: { "User-Agent": UA } });
+        if (!r.ok) return new Set(DEEPAI_MODEL_OVERRIDES);
+        const html = await r.text();
+
+        const freeKeys = new Set(["vexa"]);
+        const lockPattern = /lock-icon/;
+        const spanPattern = /<span[^>]*>([^<]+)<\/span>/;
+
+        const blocks = html.split(/<div[^>]*class="[^"]*chat-mode-menu-item/i).slice(1);
+        for (const block of blocks) {
+            if (/chat-mode-locked/.test(block) || lockPattern.test(block)) continue;
+            const spanMatch = block.match(spanPattern);
+            if (!spanMatch) continue;
+            const label = unescapeHtml(spanMatch[1].trim());
+            if (!label || label.length < 2) continue;
+
+            const known = [...DEEPAI_MODEL_OVERRIDES].find(key => {
+                const knownLabel = {
+                    "vexa": "Vexa", "gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite",
+                    "gpt-4.1-nano": "GPT-4.1 Nano", "deepseek-v3.2": "DeepSeek V3.2",
+                    "llama-3.3-70b": "Llama 3.3 70B Instruct", "llama-3.1-8b": "Llama 3.1 8B Instant",
+                    "llama-4-scout": "Llama 4 Scout", "qwen3-30b": "Qwen3 30B",
+                    "gpt-5-nano": "GPT-5 Nano", "gpt-oss-120b": "GPT OSS 120B",
+                }[key];
+                return knownLabel && knownLabel.toLowerCase() === label.toLowerCase();
+            });
+            freeKeys.add(known || labelToKey(label));
+        }
+
+        for (const key of DEEPAI_MODEL_OVERRIDES) {
+            freeKeys.add(key);
+        }
+
+        return freeKeys;
+    } catch (_) {
+        return new Set(DEEPAI_MODEL_OVERRIDES);
+    }
+}
+
 async function getValidModels() {
     const now = Date.now();
-    if (modelsCache.models.size > 0 && now - modelsCache.ts < MODELS_CACHE_TTL) return modelsCache.models;
+    if (modelsCache.toolbazModels.size > 0 && now - modelsCache.ts < MODELS_CACHE_TTL) {
+        return { toolbaz: modelsCache.toolbazModels, deepai: modelsCache.deepaiModels };
+    }
     try {
-        const r = await fetch(TOOLBAZ_PAGE_URL, { headers: { "User-Agent": UA } });
-        if (!r.ok) return modelsCache.models.size ? modelsCache.models : new Set(["vexa", "toolbaz-v4.5-fast"]);
-        const html = await r.text();
-        const selectMatch = html.match(/<select[^>]*\bname=["']?model["']?[^>]*>([\s\S]*?)(?:<\/select>|$)/i);
-        if (!selectMatch) return modelsCache.models.size ? modelsCache.models : new Set(["vexa", "toolbaz-v4.5-fast"]);
-        const models = new Set();
-        models.add("vexa");
-        models.add("gemini-2.5-flash-lite");
-        models.add("gpt-4.1-nano");
-        models.add("deepseek-v3.2");
-        const seen = new Set(["vexa"]);
-        for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)/gi)) {
-            const val = m[1].trim();
-            if (val && !seen.has(val)) { seen.add(val); models.add(val); }
+        const [tbRes, deepaiKeys] = await Promise.all([
+            fetch(TOOLBAZ_PAGE_URL, { headers: { "User-Agent": UA } }),
+            scrapeDeepAIFreeModels(),
+        ]);
+
+        const toolbaz = new Set(["vexa"]);
+        if (tbRes.ok) {
+            const html = await tbRes.text();
+            const selectMatch = html.match(/<select[^>]*\bname=["']?model["']?[^>]*>([\s\S]*?)(?:<\/select>|$)/i);
+            if (selectMatch) {
+                const seen = new Set();
+                for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)/gi)) {
+                    const val = m[1].trim();
+                    if (val && !seen.has(val)) { seen.add(val); toolbaz.add(val); }
+                }
+            }
         }
-        if (models.size) {
-            modelsCache.models = models;
-            modelsCache.ts = now;
-            return models;
-        }
-    } catch (_) { }
-    return modelsCache.models.size ? modelsCache.models : new Set(["vexa", "toolbaz-v4.5-fast"]);
+
+        modelsCache.toolbazModels = toolbaz;
+        modelsCache.deepaiModels = deepaiKeys;
+        modelsCache.ts = now;
+        return { toolbaz, deepai: deepaiKeys };
+    } catch (_) {
+        return {
+            toolbaz: modelsCache.toolbazModels.size > 0 ? modelsCache.toolbazModels : new Set(["vexa"]),
+            deepai: modelsCache.deepaiModels.size > 0 ? modelsCache.deepaiModels : new Set(DEEPAI_MODEL_OVERRIDES),
+        };
+    }
 }
 
 async function vexaComplete(prompt, messages, model = "standard") {
@@ -349,16 +420,22 @@ export async function onRequest({ request }) {
     let model = body.model || DEFAULT_MODEL;
     const totalChars = messages.reduce((sum, m) => sum + (m.content || "").length, 0);
     const prompt = messagesToPrompt(messages);
-    const validModels = await getValidModels();
-    if (!POLLINATIONS_MODELS.has(model) && !validModels.has(model)) model = DEFAULT_MODEL;
+
+    const { toolbaz: toolbazModels, deepai: deepaiModels } = await getValidModels();
+
+    const isDeepAI = deepaiModels.has(model);
+    const isPollinations = POLLINATIONS_MODELS.has(model);
+    const isToolbaz = toolbazModels.has(model);
+
+    if (!isDeepAI && !isPollinations && !isToolbaz) model = DEFAULT_MODEL;
+
     const t0 = Date.now();
     try {
-        const DEEPAI_MODELS = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
         const deepaiModel = model === "vexa" ? "standard" : model;
         const lastUserMsg = messages.filter(m => m.role === "user").at(-1)?.content || "";
-        const text = POLLINATIONS_MODELS.has(model)
+        const text = isPollinations
             ? await pollinationsComplete(messages, model)
-            : DEEPAI_MODELS.has(model)
+            : deepaiModels.has(model)
                 ? await vexaComplete(prompt, messages, deepaiModel)
                 : model === "gpt-5"
                     ? await aiFreeComplete(lastUserMsg, messages, model)

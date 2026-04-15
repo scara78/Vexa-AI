@@ -4,7 +4,7 @@
 
 Free REST API for text and image generation. No account, no API key, no setup.
 
-- **Text** — 25+ AI models via Toolbaz, DeepAI, AIFreeForever, and Pollinations
+- **Text** — Multiple AI models via Toolbaz, DeepAI, AIFreeForever, and Pollinations
 - **Images** — HD (DeepAI) + Pollinations models (Flux, Turbo, Kontext, Seedream, Nano Banana), proxied (no direct image URLs exposed)
 
 ```
@@ -34,10 +34,7 @@ BASE_URL = https://vexa-ai.pages.dev
 curl "/query?q=What+is+a+black+hole"
 
 # With a specific model
-curl "/query?q=Hello&model=toolbaz-v4.5-fast"
-
-# With Pollinations
-curl "/query?q=Hello&model=pol-openai-fast"
+curl "/query?q=Hello&model=your-model-id"
 
 # Multi-turn chat
 curl -X POST /chat \
@@ -47,8 +44,8 @@ curl -X POST /chat \
 # Generate an image (default: HD model, speed preference)
 curl "/image?q=a+red+fox+in+a+neon+city"
 
-# Generate with Pollinations Flux
-curl "/image?q=a+castle&model=flux"
+# Generate with specific model
+curl "/image?q=a+castle&model=model-name"
 
 # Generate with quality preference (HD only)
 curl "/image?q=a+castle&preference=quality"

@@ -26,7 +26,7 @@ const endpointsData = {
         "/image": {
             GET: "/image?q=a+cat",
             GET_2: "/image?q=a+castle&preference=quality",
-            GET_3: "/image?q=a+castle&model=flux",
+            GET_3: "/image?q=a+castle&model=hd",
             POST: {
                 body: { prompt: "a cat", model: "hd", preference: "speed" },
                 example: 'POST /image {"prompt":"a cat","model":"hd"}'
@@ -38,7 +38,7 @@ const endpointsData = {
         },
         "/query": {
             GET: "/query?q=What+is+AI?",
-            GET_2: "/query?q=What+is+AI?&model=pol-openai-fast",
+            GET_2: "/query?q=What+is+AI?&model=hd",
             POST: {
                 body: { prompt: "What is AI?", model: "vexa" },
                 example: 'POST /query {"prompt":"What is AI?","model":"vexa"}'

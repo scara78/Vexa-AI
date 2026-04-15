@@ -147,8 +147,8 @@ async function refreshModels() {
     const html = await r.text();
     const selectMatch = html.match(/<select[^>]*\bname=["']?model["']?[^>]*>([\s\S]*?)(?:<\/select>|$)/i);
     if (!selectMatch) return;
-    const keys = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
-    const seen = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
+    const keys = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b"]);
+    const seen = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b"]);
     for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)/gi)) {
       const k = m[1].trim();
       if (k && !seen.has(k)) { keys.add(k); seen.add(k); }
@@ -306,7 +306,7 @@ async function run(prompt, model, ip) {
   }
   const t0 = Date.now();
   try {
-    const DEEPAI_MODELS = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2"]);
+    const DEEPAI_MODELS = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b"]);
     const deepaiModel = model === "vexa" ? "standard" : model;
     const raw = POLLINATIONS_MODELS.has(model)
       ? await pollinationsComplete(prompt, model)
