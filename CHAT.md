@@ -22,7 +22,8 @@ curl -X POST /chat \
       { "role": "user",      "content": "What is the speed of light?" },
       { "role": "assistant", "content": "Approximately 299,792,458 metres per second." },
       { "role": "user",      "content": "How long does it take to reach the Moon?" }
-    ]
+    ],
+    "stream": true
   }'
 ```
 
@@ -32,6 +33,7 @@ curl -X POST /chat \
 |-------|----------|-------------|
 | `messages` | yes | Array of message objects (at least one) |
 | `model` | no | Model ID. Defaults to `vexa`. Falls back to `vexa` if the given model is not valid. See [/models](./MODELS.md). |
+| `stream` | no | Set to `true` to enable streaming responses. Defaults to `false`. |
 
 ### Message object
 
@@ -61,6 +63,39 @@ curl -X POST /chat \
 | `model` | string | Model used |
 | `elapsed_ms` | number | Time to generate |
 | `prompt_chars` | number | Total character count of all messages sent |
+
+---
+
+## Streaming Response
+
+When `stream: true` is set, the response is sent as Server-Sent Events (SSE):
+
+```bash
+curl -X POST /chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "Hello!"}], "stream": true}' \
+  --no-buffer
+```
+
+### Streaming format
+
+Each chunk is prefixed with `data: ` and contains JSON in OpenAI's SSE format:
+
+```
+data: {"choices":[{"delta":{"content":"H"},"finish_reason":null}]}
+data: {"choices":[{"delta":{"content":"e"},"finish_reason":null}]}
+data: {"choices":[{"delta":{"content":"l"},"finish_reason":null}]}
+data: {"choices":[{"delta":{"content":"l"},"finish_reason":null}]}
+data: {"choices":[{"delta":{"content":"o"},"finish_reason":null}]}
+data: {"choices":[{"delta":{},"finish_reason":"stop"}]}
+data: [DONE]
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `choices[0].delta.content` | string | Content chunk (character by character) |
+| `choices[0].finish_reason` | string | `null` while streaming, `"stop"` when complete |
+| `data: [DONE]` | - | Final marker indicating stream completion |
 
 ---
 

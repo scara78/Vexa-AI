@@ -34,18 +34,24 @@ BASE_URL = https://vexa-ai.pages.dev
 curl "/query?q=What+is+a+black+hole"
 
 # With a specific model
-curl "/query?q=Hello&model=your-model-id"
+curl "/query?q=Hello&model=vexa"
 
 # Multi-turn chat
 curl -X POST /chat \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "Hello!"}]}'
 
+# Multi-turn chat with streaming
+curl -X POST /chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "Hello!"}], "stream": true}' \
+  --no-buffer
+
 # Generate an image (default: HD model, speed preference)
 curl "/image?q=a+red+fox+in+a+neon+city"
 
 # Generate with specific model
-curl "/image?q=a+castle&model=model-name"
+curl "/image?q=a+castle&model=hd"
 
 # Generate with quality preference (HD only)
 curl "/image?q=a+castle&preference=quality"

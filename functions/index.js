@@ -38,7 +38,7 @@ const endpointsData = {
         },
         "/query": {
             GET: "/query?q=What+is+AI?",
-            GET_2: "/query?q=What+is+AI?&model=hd",
+            GET_2: "/query?q=What+is+AI?&model=vexa",
             POST: {
                 body: { prompt: "What is AI?", model: "vexa" },
                 example: 'POST /query {"prompt":"What is AI?","model":"vexa"}'

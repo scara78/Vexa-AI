@@ -5,6 +5,9 @@ const WRITE_URL = "https://data.toolbaz.com/writing.php";
 const DEEPAI_API = "https://api.deepai.org";
 const POLLINATIONS_URL = "https://text.pollinations.ai/openai";
 const POLLINATIONS_MODELS = new Set(["pol-openai-fast"]);
+const DOLPHIN_URL = "https://chat.dphn.ai/api/chat";
+const DOLPHIN_MODELS = new Set(["dolphin-logical", "dolphin-creative", "dolphin-summarize", "dolphin-code-beginner", "dolphin-code-advanced"]);
+const DOLPHIN_TEMPLATE_MAP = { "dolphin-logical": "logical", "dolphin-creative": "creative", "dolphin-summarize": "summarize", "dolphin-code-beginner": "code_beginner", "dolphin-code-advanced": "code_advanced" };
 
 const POST_HDRS = {
   "User-Agent": UA,
@@ -147,8 +150,8 @@ async function refreshModels() {
     const html = await r.text();
     const selectMatch = html.match(/<select[^>]*\bname=["']?model["']?[^>]*>([\s\S]*?)(?:<\/select>|$)/i);
     if (!selectMatch) return;
-    const keys = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b"]);
-    const seen = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b"]);
+    const keys = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b", "dolphin-logical", "dolphin-creative", "dolphin-summarize", "dolphin-code-beginner", "dolphin-code-advanced"]);
+    const seen = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b", "dolphin-logical", "dolphin-creative", "dolphin-summarize", "dolphin-code-beginner", "dolphin-code-advanced"]);
     for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)/gi)) {
       const k = m[1].trim();
       if (k && !seen.has(k)) { keys.add(k); seen.add(k); }
@@ -242,6 +245,38 @@ async function pollinationsComplete(prompt, model) {
   return (j.choices?.[0]?.message?.content || "").trim();
 }
 
+async function dolphinComplete(prompt, model) {
+  const template = DOLPHIN_TEMPLATE_MAP[model] || "logical";
+  const r = await fetch(DOLPHIN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "User-Agent": UA, "Referer": "https://chat.dphn.ai/", "Origin": "https://chat.dphn.ai" },
+    body: JSON.stringify({ messages: [{ role: "user", content: prompt }], model: "dolphinserver:24B", template }),
+  });
+  if (!r.ok) throw new Error(`Dolphin error ${r.status}`);
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let full = "";
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t || t === "data: [DONE]") continue;
+      if (t.startsWith("data: ")) {
+        try { const obj = JSON.parse(t.slice(6)); const c = obj.choices?.[0]?.delta?.content; if (c) full += c; } catch (_) { }
+      }
+    }
+  }
+  if (buf.trim() && buf.trim().startsWith("data: ")) {
+    try { const obj = JSON.parse(buf.trim().slice(6)); const c = obj.choices?.[0]?.delta?.content; if (c) full += c; } catch (_) { }
+  }
+  return full.trim();
+}
+
 async function fetchUpstream(prompt, model) {
   if (model === "vexa") return fetchVexa(prompt);
   const sid = randomString(32);
@@ -249,19 +284,15 @@ async function fetchUpstream(prompt, model) {
   let lastErr;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      console.log(`Attempt ${attempt + 1}: Getting token for model ${model}`);
       const tr = await fetch(TOKEN_URL, { method: "POST", headers: POST_HDRS, body: tokenBody.toString() });
       if (!tr.ok) {
-        console.log(`Token request failed: ${tr.status}`);
         throw new Error(`Token request failed: ${tr.status}`);
       }
       const tj = await tr.json();
       const token = tj.token || "";
       if (!token) {
-        console.log("Token endpoint returned no token");
         throw new Error("Token endpoint returned no token");
       }
-      console.log(`Got token, making write request for model ${model}`);
       const writeBody = new URLSearchParams({ text: prompt, capcha: token, model, session_id: sid });
       const wr = await fetch(WRITE_URL, {
         method: "POST",
@@ -269,14 +300,11 @@ async function fetchUpstream(prompt, model) {
         body: writeBody.toString(),
       });
       if (wr.ok) {
-        console.log(`Write request successful for model ${model}`);
         return await wr.text();
       }
-      console.log(`Write request failed: ${wr.status}`);
       if (wr.status < 500) throw new Error(`Upstream error ${wr.status}`);
       lastErr = new Error(`Upstream server error ${wr.status}`);
     } catch (e) {
-      console.log(`Error in fetchUpstream: ${e.message}`);
       lastErr = e;
       if (e.message.startsWith("Upstream error")) throw e;
     }
@@ -301,25 +329,27 @@ async function run(prompt, model, ip) {
   prompt = prompt.trim();
   await refreshModels();
   if (!model) model = DEFAULT_MODEL;
-  if (!POLLINATIONS_MODELS.has(model) && model !== "vexa" && modelsCache.keys.size > 0 && !modelsCache.keys.has(model)) {
+  if (!POLLINATIONS_MODELS.has(model) && !DOLPHIN_MODELS.has(model) && model !== "vexa" && modelsCache.keys.size > 0 && !modelsCache.keys.has(model)) {
     return Response.json({ success: false, error: `Unknown model '${model}'`, valid_models: [...modelsCache.keys].sort() }, { status: 400, headers: corsHeaders() });
   }
   const t0 = Date.now();
   try {
     const DEEPAI_MODELS = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b"]);
     const deepaiModel = model === "vexa" ? "standard" : model;
-    const raw = POLLINATIONS_MODELS.has(model)
-      ? await pollinationsComplete(prompt, model)
-      : DEEPAI_MODELS.has(model)
-        ? await fetchVexa(prompt, deepaiModel)
-        : model === "gpt-5"
-          ? await aiFreeComplete(prompt, [{ role: "user", content: prompt }], model)
-          : await fetchUpstream(prompt, model);
-    const text = POLLINATIONS_MODELS.has(model) || DEEPAI_MODELS.has(model) || model === "gpt-5" ? raw : parseFull(raw);
-    const source = POLLINATIONS_MODELS.has(model) ? "pollinations.ai" : DEEPAI_MODELS.has(model) ? "deepai.org" : model === "gpt-5" ? "aifreeforever.com" : "toolbaz.com";
+    const raw = DOLPHIN_MODELS.has(model)
+      ? await dolphinComplete(prompt, model)
+      : POLLINATIONS_MODELS.has(model)
+        ? await pollinationsComplete(prompt, model)
+        : DEEPAI_MODELS.has(model)
+          ? await fetchVexa(prompt, deepaiModel)
+          : model === "gpt-5"
+            ? await aiFreeComplete(prompt, [{ role: "user", content: prompt }], model)
+            : await fetchUpstream(prompt, model);
+    const text = POLLINATIONS_MODELS.has(model) || DEEPAI_MODELS.has(model) || DOLPHIN_MODELS.has(model) || model === "gpt-5" ? raw : parseFull(raw);
+    const source = DOLPHIN_MODELS.has(model) ? "dphn.ai" : POLLINATIONS_MODELS.has(model) ? "pollinations.ai" : DEEPAI_MODELS.has(model) ? "deepai.org" : model === "gpt-5" ? "aifreeforever.com" : "toolbaz.com";
     return Response.json({ success: true, response: text, model, elapsed_ms: Date.now() - t0, source }, { status: 200, headers: corsHeaders() });
-  } catch (_) {
-    return Response.json({ success: false, error: "Upstream request failed" }, { status: 502, headers: corsHeaders() });
+  } catch (e) {
+    return Response.json({ success: false, error: "Upstream request failed", detail: e.message }, { status: 502, headers: corsHeaders() });
   }
 }
 

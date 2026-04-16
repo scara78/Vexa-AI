@@ -13,7 +13,7 @@ POST /query
 
 ```bash
 curl "/query?q=What+is+a+black+hole"
-curl "/query?q=Hello&model=your-model-id"
+curl "/query?q=Hello&model=vexa"
 ```
 
 ### Parameters
@@ -30,7 +30,7 @@ curl "/query?q=Hello&model=your-model-id"
 ```bash
 curl -X POST /query \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Explain quantum computing", "model": "your-model-id"}'
+  -d '{"prompt": "Explain quantum computing", "model": "vexa"}'
 ```
 
 ### Body fields
@@ -72,10 +72,14 @@ curl -X POST /query \
 const res = await fetch('/query', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ prompt: 'Hello!', model: 'your-model-id' })
+  body: JSON.stringify({ prompt: 'Hello!', model: 'vexa' })
 });
 const data = await res.json();
-console.log(data.response);
+if (data.success) {
+  console.log(data.response);
+} else {
+  console.log('Error:', data.error);
+}
 ```
 
 ### Python
@@ -84,9 +88,13 @@ console.log(data.response);
 import requests
 r = requests.post('/query', json={
     'prompt': 'What is a neural network?',
-    'model': 'your-model-id',
+    'model': 'vexa',
 })
-print(r.json()['response'])
+response_data = r.json()
+if response_data.get('success'):
+    print(response_data['response'])
+else:
+    print(f"Error: {response_data.get('error', 'Unknown error')}")
 ```
 
 ---

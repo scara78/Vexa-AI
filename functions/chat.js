@@ -6,6 +6,9 @@ const DEEPAI_API = "https://api.deepai.org";
 const SESSION_ID = "yz3SJSGvR1ih8w5vfOmk9Fpd87iSGfUos54s";
 const POLLINATIONS_URL = "https://text.pollinations.ai/openai";
 const POLLINATIONS_MODELS = new Set(["pol-openai-fast"]);
+const DOLPHIN_URL = "https://chat.dphn.ai/api/chat";
+const DOLPHIN_MODELS = new Set(["dolphin-logical", "dolphin-creative", "dolphin-summarize", "dolphin-code-beginner", "dolphin-code-advanced"]);
+const DOLPHIN_TEMPLATE_MAP = { "dolphin-logical": "logical", "dolphin-creative": "creative", "dolphin-summarize": "summarize", "dolphin-code-beginner": "code_beginner", "dolphin-code-advanced": "code_advanced" };
 const DEEPAI_CHAT_URL = "https://deepai.org/chat";
 
 const MODELS_CACHE_TTL = 300000;
@@ -294,6 +297,38 @@ async function pollinationsComplete(messages, model) {
     return (j.choices?.[0]?.message?.content || "").trim();
 }
 
+async function dolphinComplete(prompt, model) {
+    const template = DOLPHIN_TEMPLATE_MAP[model] || "logical";
+    const r = await fetch(DOLPHIN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA, "Referer": "https://chat.dphn.ai/", "Origin": "https://chat.dphn.ai" },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }], model: "dolphinserver:24B", template }),
+    });
+    if (!r.ok) throw new Error(`Dolphin error ${r.status}`);
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+    let buf = "";
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+            const t = line.trim();
+            if (!t || t === "data: [DONE]") continue;
+            if (t.startsWith("data: ")) {
+                try { const obj = JSON.parse(t.slice(6)); const c = obj.choices?.[0]?.delta?.content; if (c) full += c; } catch (_) { }
+            }
+        }
+    }
+    if (buf.trim() && buf.trim().startsWith("data: ")) {
+        try { const obj = JSON.parse(buf.trim().slice(6)); const c = obj.choices?.[0]?.delta?.content; if (c) full += c; } catch (_) { }
+    }
+    return full.trim();
+}
+
 async function toolbazComplete(prompt, model) {
     const clientToken = makeClientToken();
     const tokenBody = new URLSearchParams({ session_id: SESSION_ID, token: clientToken });
@@ -364,7 +399,26 @@ function corsHeaders() {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
+    };
+}
+
+function corsHeadersJson() {
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
         "Content-Type": "application/json",
+    };
+}
+
+function corsHeadersStream() {
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
     };
 }
 
@@ -396,25 +450,25 @@ export async function onRequest({ request }) {
     }
     const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
     if (isRateLimited(ip)) {
-        return Response.json({ success: false, error: "Rate limit exceeded. Try again shortly." }, { status: 429, headers: corsHeaders() });
+        return Response.json({ success: false, error: "Rate limit exceeded. Try again shortly." }, { status: 429, headers: corsHeadersJson() });
     }
     let body;
     try { body = await request.json(); }
-    catch (_) { return Response.json({ success: false, error: "Invalid JSON body" }, { status: 400, headers: corsHeaders() }); }
+    catch (_) { return Response.json({ success: false, error: "Invalid JSON body" }, { status: 400, headers: corsHeadersJson() }); }
     const messages = body.messages;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-        return Response.json({ success: false, error: "Missing or empty 'messages' array" }, { status: 400, headers: corsHeaders() });
+        return Response.json({ success: false, error: "Missing or empty 'messages' array" }, { status: 400, headers: corsHeadersJson() });
     }
     for (let i = 0; i < messages.length; i++) {
         const msg = messages[i];
         if (typeof msg !== "object" || msg === null) {
-            return Response.json({ success: false, error: `messages[${i}] must be an object` }, { status: 400, headers: corsHeaders() });
+            return Response.json({ success: false, error: `messages[${i}] must be an object` }, { status: 400, headers: corsHeadersJson() });
         }
         if (!["system", "user", "assistant"].includes(msg.role)) {
-            return Response.json({ success: false, error: `messages[${i}].role must be 'system', 'user', or 'assistant'` }, { status: 400, headers: corsHeaders() });
+            return Response.json({ success: false, error: `messages[${i}].role must be 'system', 'user', or 'assistant'` }, { status: 400, headers: corsHeadersJson() });
         }
         if (typeof (msg.content ?? "") !== "string") {
-            return Response.json({ success: false, error: `messages[${i}].content must be a string` }, { status: 400, headers: corsHeaders() });
+            return Response.json({ success: false, error: `messages[${i}].content must be a string` }, { status: 400, headers: corsHeadersJson() });
         }
     }
     let model = body.model || DEFAULT_MODEL;
@@ -425,29 +479,90 @@ export async function onRequest({ request }) {
 
     const isDeepAI = deepaiModels.has(model);
     const isPollinations = POLLINATIONS_MODELS.has(model);
+    const isDolphin = DOLPHIN_MODELS.has(model);
     const isToolbaz = toolbazModels.has(model);
 
-    if (!isDeepAI && !isPollinations && !isToolbaz) model = DEFAULT_MODEL;
+    if (!isDeepAI && !isPollinations && !isDolphin && !isToolbaz) model = DEFAULT_MODEL;
 
     const t0 = Date.now();
+    const stream = body.stream === true;
+
     try {
         const deepaiModel = model === "vexa" ? "standard" : model;
         const lastUserMsg = messages.filter(m => m.role === "user").at(-1)?.content || "";
-        const text = isPollinations
-            ? await pollinationsComplete(messages, model)
-            : deepaiModels.has(model)
-                ? await vexaComplete(prompt, messages, deepaiModel)
-                : model === "gpt-5"
-                    ? await aiFreeComplete(lastUserMsg, messages, model)
-                    : await toolbazComplete(prompt, model);
-        return Response.json({
-            success: true,
-            message: { role: "assistant", content: text },
-            model,
-            elapsed_ms: Date.now() - t0,
-            prompt_chars: totalChars,
-        }, { status: 200, headers: corsHeaders() });
+
+        if (stream) {
+            const encoder = new TextEncoder();
+            const stream = new ReadableStream({
+                async start(controller) {
+                    try {
+                        let text;
+                        if (isDolphin) {
+                            text = await dolphinComplete(lastUserMsg, model);
+                        } else if (isPollinations) {
+                            text = await pollinationsComplete(messages, model);
+                        } else if (deepaiModels.has(model)) {
+                            text = await vexaComplete(prompt, messages, deepaiModel);
+                        } else if (model === "gpt-5") {
+                            text = await aiFreeComplete(lastUserMsg, messages, model);
+                        } else {
+                            text = await toolbazComplete(prompt, model);
+                        }
+
+                        for (let i = 0; i < text.length; i++) {
+                            const chunk = text[i];
+                            const data = JSON.stringify({
+                                choices: [{
+                                    delta: { content: chunk },
+                                    finish_reason: null
+                                }]
+                            });
+                            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+                            await new Promise(resolve => setTimeout(resolve, 10));
+                        }
+
+                        const finalData = JSON.stringify({
+                            choices: [{
+                                delta: {},
+                                finish_reason: "stop"
+                            }]
+                        });
+                        controller.enqueue(encoder.encode(`data: ${finalData}\n\n`));
+                        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                        controller.close();
+                    } catch (error) {
+                        const errorData = JSON.stringify({
+                            error: { message: error.message }
+                        });
+                        controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+                        controller.close();
+                    }
+                }
+            });
+
+            return new Response(stream, {
+                status: 200,
+                headers: corsHeadersStream()
+            });
+        } else {
+            const text = isDolphin
+                ? await dolphinComplete(lastUserMsg, model)
+                : isPollinations
+                    ? await pollinationsComplete(messages, model)
+                    : deepaiModels.has(model)
+                        ? await vexaComplete(prompt, messages, deepaiModel)
+                        : model === "gpt-5"
+                            ? await aiFreeComplete(lastUserMsg, messages, model)
+                            : await toolbazComplete(prompt, model);
+            return Response.json({
+                success: true,
+                message: { role: "assistant", content: text },
+                model,
+                elapsed_ms: Date.now() - t0,
+                prompt_chars: totalChars,
+            }, { status: 200, headers: corsHeadersJson() });
+        }
     } catch (e) {
-        return Response.json({ success: false, error: `Upstream request failed: ${e.message}` }, { status: 502, headers: corsHeaders() });
+        return Response.json({ success: false, error: `Upstream request failed: ${e.message}` }, { status: 502, headers: corsHeadersJson() });
     }
 }
