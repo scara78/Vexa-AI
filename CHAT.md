@@ -82,15 +82,16 @@ curl -X POST /chat \
 Each chunk is prefixed with `data: ` and contains JSON in OpenAI SSE format:
 
 ```
-data: {"choices":[{"delta":{"content":"H"},"finish_reason":null}]}
-data: {"choices":[{"delta":{"content":"e"},"finish_reason":null}]}
+data: {"choices":[{"delta":{"content":"Hell"},"finish_reason":null}]}
+data: {"choices":[{"delta":{"content":"o, W"},"finish_reason":null}]}
+data: {"choices":[{"delta":{"content":"orld"},"finish_reason":null}]}
 data: {"choices":[{"delta":{},"finish_reason":"stop"}]}
 data: [DONE]
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `choices[0].delta.content` | string | Content chunk (character by character) |
+| `choices[0].delta.content` | string | Content chunk (up to 4 characters) |
 | `choices[0].finish_reason` | string | `null` while streaming, `"stop"` when complete |
 | `data: [DONE]` | — | Final marker indicating stream completion |
 
@@ -155,7 +156,12 @@ def chat(msg, model='vexa'):
 | Status | Error |
 |--------|-------|
 | `400` | `Missing or empty 'messages' array` |
+| `400` | `Too many messages: max is 100` |
+| `400` | `messages[N] must be an object` |
 | `400` | `messages[N].role must be 'system', 'user', or 'assistant'` |
-| `400` | `messages[N].content must be a string` |
+| `400` | `messages[N].content must be a non-empty string` |
+| `400` | `messages[N].content exceeds max length of 32000` |
+| `400` | `Total message content exceeds max of 200000 characters` |
+| `400` | `At least one message with role 'user' is required` |
 | `429` | `Rate limit exceeded. Try again shortly.` |
 | `502` | `Upstream request failed: <detail>` |

@@ -1,84 +1,117 @@
-export const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-export const TOOLBAZ_PAGE_URL = "https://toolbaz.com/writer/chat-gpt-alternative";
-export const TOKEN_URL = "https://data.toolbaz.com/token.php";
-export const WRITE_URL = "https://data.toolbaz.com/writing.php";
-export const DEEPAI_API = "https://api.deepai.org";
-export const DEEPAI_CHAT_URL = "https://deepai.org/chat";
-export const DEEPAI_IMAGE_URL = "https://api.deepai.org/api/text2img";
-export const POLLINATIONS_URL = "https://text.pollinations.ai/openai";
-export const POLLINATIONS_IMAGE_URL = "https://image.pollinations.ai/prompt/";
-export const DOLPHIN_URL = "https://chat.dphn.ai/api/chat";
-export const TALKAI_URL = "https://talkai.info/chat/send/";
-export const AIFREE_NONCE_URL = "https://aifreeforever.com/api/chat-nonce";
-export const AIFREE_ANSWER_URL = "https://aifreeforever.com/api/generate-ai-answer";
+export {
+    UA, API_URLS, MODEL_SETS, MODEL_MAPPINGS, PRIORITY_MODELS, DEEPAI_MODEL_OVERRIDES,
+    IMAGE_MODELS, IMAGE_PREFERENCES, DEFAULT_IMAGE_MODEL, DEFAULT_IMAGE_PREFERENCE,
+    POLLINATIONS_TEXT_MODELS_LIST, DEFAULT_MODEL, CACHE_SETTINGS, HEALTH_SETTINGS,
+    PROVIDER_SETTINGS, REQUEST_HEADERS, SECURITY_CONSTANTS, API_KEYS, FORM_TEMPLATES,
+    TEMPERATURE_SETTINGS, IMAGE_GENERATION,
+} from "./config.js";
 
-export const POLLINATIONS_MODELS = new Set(["pol-openai-fast"]);
-export const DOLPHIN_MODELS = new Set(["dolphin-logical", "dolphin-creative", "dolphin-summarize", "dolphin-code-beginner", "dolphin-code-advanced"]);
-export const DOLPHIN_TEMPLATE_MAP = { "dolphin-logical": "logical", "dolphin-creative": "creative", "dolphin-summarize": "summarize", "dolphin-code-beginner": "code_beginner", "dolphin-code-advanced": "code_advanced" };
-export const DEEPAI_MODELS = new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b", "dolphin-logical", "dolphin-creative", "dolphin-summarize", "dolphin-code-beginner", "dolphin-code-advanced", "claude-3-haiku", "gemini-2.0-flash-lite", "deepseek-chat"]);
-export const TALKAI_MODELS = new Set(["claude-3-haiku", "gemini-2.0-flash-lite", "deepseek-chat", "gpt-4.1-nano"]);
-export const TALKAI_MODEL_IDS = { "claude-3-haiku": "claude-3-haiku-20240307", "gemini-2.0-flash-lite": "gemini-2.0-flash-lite", "deepseek-chat": "deepseek-chat", "gpt-4.1-nano": "gpt-4.1-nano" };
+import {
+    UA, API_URLS, MODEL_SETS, MODEL_MAPPINGS, PRIORITY_MODELS, DEEPAI_MODEL_OVERRIDES,
+    IMAGE_MODELS, IMAGE_PREFERENCES, DEFAULT_IMAGE_MODEL, DEFAULT_IMAGE_PREFERENCE,
+    POLLINATIONS_TEXT_MODELS_LIST, DEFAULT_MODEL, CACHE_SETTINGS, HEALTH_SETTINGS,
+    PROVIDER_SETTINGS, REQUEST_HEADERS, SECURITY_CONSTANTS, API_KEYS, FORM_TEMPLATES,
+    TEMPERATURE_SETTINGS, IMAGE_GENERATION,
+} from "./config.js";
 
-export const DEEPAI_MODEL_OVERRIDES = {
-    "vexa": { label: "Vexa", provider: "vexa-ai", speed: 0, quality: 0 },
-    "dolphin-logical": { label: "Dolphin 24B (Logical)", provider: "Dolphin AI", speed: 300, quality: 78 },
-    "dolphin-creative": { label: "Dolphin 24B (Creative)", provider: "Dolphin AI", speed: 300, quality: 76 },
-    "dolphin-summarize": { label: "Dolphin 24B (Summarize)", provider: "Dolphin AI", speed: 300, quality: 75 },
-    "dolphin-code-beginner": { label: "Dolphin 24B (Code Beginner)", provider: "Dolphin AI", speed: 300, quality: 74 },
-    "dolphin-code-advanced": { label: "Dolphin 24B (Code Advanced)", provider: "Dolphin AI", speed: 280, quality: 79 },
-    "gemini-2.5-flash-lite": { label: "Gemini 2.5 Flash Lite", provider: "Google", speed: 180, quality: 72 },
-    "gpt-4.1-nano": { label: "GPT-4.1 Nano", provider: "OpenAI", speed: 320, quality: 70 },
-    "deepseek-v3.2": { label: "DeepSeek V3.2", provider: "DeepSeek", speed: 280, quality: 81 },
-    "llama-3.3-70b": { label: "Llama 3.3 70B Instruct", provider: "Facebook (Meta)", speed: 250, quality: 78 },
-    "llama-3.1-8b": { label: "Llama 3.1 8B Instant", provider: "Facebook (Meta)", speed: 400, quality: 65 },
-    "llama-4-scout": { label: "Llama 4 Scout", provider: "Facebook (Meta)", speed: 300, quality: 76 },
-    "qwen3-30b": { label: "Qwen3 30B", provider: "Alibaba", speed: 260, quality: 77 },
-    "gpt-5-nano": { label: "GPT-5 Nano", provider: "OpenAI", speed: 350, quality: 74 },
-    "gpt-oss-120b": { label: "GPT OSS 120B", provider: "OpenAI", speed: 200, quality: 80 },
-    "claude-3-haiku": { label: "Claude 3 Haiku", provider: "Anthropic", speed: 310, quality: 74 },
-    "gemini-2.0-flash-lite": { label: "Gemini 2.0 Flash-Lite", provider: "Google", speed: 340, quality: 71 },
-    "deepseek-chat": { label: "DeepSeek V3", provider: "DeepSeek", speed: 280, quality: 80 },
-};
+const { POLLINATIONS_MODELS, DOLPHIN_MODELS, DEEPAI_MODELS, TALKAI_MODELS, DEEPAI_IMAGE_MODELS, POLLINATIONS_IMAGE_MODELS } = MODEL_SETS;
+const { DOLPHIN_TEMPLATE_MAP, TALKAI_MODEL_IDS } = MODEL_MAPPINGS;
+const { TOOLBAZ_PAGE_URL, TOKEN_URL, DEEPAI_API, DEEPAI_CHAT_URL, DEEPAI_IMAGE_URL, POLLINATIONS_URL, POLLINATIONS_IMAGE_URL, DOLPHIN_URL, TALKAI_URL, AIFREE_NONCE_URL, AIFREE_ANSWER_URL } = API_URLS;
+const { MODELS_CACHE_TTL } = CACHE_SETTINGS;
+const { HEALTH_PROBE } = HEALTH_SETTINGS;
+const POST_HDRS = REQUEST_HEADERS.POST_HDRS;
 
-export const IMAGE_MODELS = [
-    { name: "hd", label: "HD", description: "Standard HD generation — DeepAI" },
-    { name: "flux", label: "Flux", description: "Fast, high quality — default" },
-    { name: "turbo", label: "Flux Turbo", description: "Fastest generation" },
-    { name: "kontext", label: "Flux Kontext", description: "Instruction-following edits" },
-    { name: "seedream", label: "Seedream 3", description: "ByteDance — photorealistic" },
-    { name: "nanobanana", label: "Nano Banana", description: "Gemini-powered — high detail" },
-];
-
-export const DEEPAI_IMAGE_MODELS = new Set(["hd"]);
-export const POLLINATIONS_IMAGE_MODELS = new Set(["flux", "turbo-img", "kontext", "seedream", "nanobanana"]);
-export const IMAGE_PREFERENCES = { speed: "turbo", quality: "quality" };
-export const DEFAULT_IMAGE_MODEL = "hd";
-export const DEFAULT_IMAGE_PREFERENCE = "speed";
-
-export const POLLINATIONS_TEXT_MODELS_LIST = [
-    { key: "pol-openai-fast", label: "Pollinations GPT-OSS", provider: "Pollinations.ai", speed: 280, quality: 72 },
-];
-
-export const DEFAULT_MODEL = "vexa";
-export const MODELS_CACHE_TTL = 300000;
-export const HEALTH_PROBE = "Hi";
-
-export const POST_HDRS = {
-    "User-Agent": UA,
-    "Referer": TOOLBAZ_PAGE_URL,
-    "Origin": "https://toolbaz.com",
-    "X-Requested-With": "XMLHttpRequest",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "Accept-Language": "en-US,en;q=0.9",
-};
+export { POLLINATIONS_MODELS, DOLPHIN_MODELS, DEEPAI_MODELS, TALKAI_MODELS, DEEPAI_IMAGE_MODELS, POLLINATIONS_IMAGE_MODELS };
+export { DOLPHIN_TEMPLATE_MAP, TALKAI_MODEL_IDS };
+export { POST_HDRS, HEALTH_PROBE };
 
 export const proxyCache = new Map();
 
+export function isModelEnabled(model) {
+    if (TALKAI_MODELS.has(model)) return PROVIDER_SETTINGS.talkai;
+    if (DOLPHIN_MODELS.has(model)) return PROVIDER_SETTINGS.dolphin;
+    if (POLLINATIONS_MODELS.has(model)) return PROVIDER_SETTINGS.pollinations;
+    if (DEEPAI_MODELS.has(model) || model === "vexa") return PROVIDER_SETTINGS.deepai;
+    if (model === "gpt-5") return PROVIDER_SETTINGS.aifree;
+    return PROVIDER_SETTINGS.toolbaz;
+}
+
+export function isImageModelEnabled(model) {
+    if (DEEPAI_IMAGE_MODELS.has(model)) return PROVIDER_SETTINGS.deepai;
+    if (POLLINATIONS_IMAGE_MODELS.has(model)) return PROVIDER_SETTINGS.pollinations;
+    return false;
+}
+
+export function getEnabledPriorityModels() {
+    return PRIORITY_MODELS.filter(model => isModelEnabled(model));
+}
+
+const _modelsCache = { textModels: {}, deepaiModels: new Set(), toolbazModels: new Set(), ts: 0 };
+
+export async function refreshModelsCache() {
+    const now = Date.now();
+    if (_modelsCache.textModels && Object.keys(_modelsCache.textModels).length > 0 && now - _modelsCache.ts < MODELS_CACHE_TTL) {
+        return _modelsCache;
+    }
+    const [tbRes, deepaiKeys] = await Promise.all([
+        fetch(TOOLBAZ_PAGE_URL, { headers: { "User-Agent": UA } }).catch(() => null),
+        scrapeDeepAIFreeModels(),
+    ]);
+    const toolbazRaw = tbRes?.ok ? scrapeToolbazModels(await tbRes.text()) : {};
+    const toolbazSet = new Set(["vexa", ...Object.keys(toolbazRaw)]);
+    const textModels = {};
+    for (const key of deepaiKeys) {
+        textModels[key] = key in DEEPAI_MODEL_OVERRIDES
+            ? DEEPAI_MODEL_OVERRIDES[key]
+            : { label: key, provider: "DeepAI", speed: 0, quality: 0 };
+    }
+    for (const [key, val] of Object.entries(toolbazRaw)) {
+        if (!(key in textModels)) textModels[key] = val;
+    }
+    for (const pm of POLLINATIONS_TEXT_MODELS_LIST) {
+        textModels[pm.key] = { label: pm.label, provider: pm.provider, speed: pm.speed, quality: pm.quality };
+    }
+    _modelsCache.textModels = textModels;
+    _modelsCache.deepaiModels = deepaiKeys;
+    _modelsCache.toolbazModels = toolbazSet;
+    _modelsCache.ts = now;
+    return _modelsCache;
+}
+
+export async function getAllEnabledModels() {
+    const c = await refreshModelsCache();
+    const filteredTextModels = {};
+    for (const [key, model] of Object.entries(c.textModels)) {
+        if (isModelEnabled(key)) filteredTextModels[key] = model;
+    }
+    return {
+        textModels: filteredTextModels,
+        imageModels: IMAGE_MODELS.filter(m => isImageModelEnabled(m.name)),
+    };
+}
+
+export async function getValidModels() {
+    const c = await refreshModelsCache();
+    return { toolbaz: c.toolbazModels, deepai: c.deepaiModels };
+}
+
 export function randomString(n) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const chars = SECURITY_CONSTANTS.RANDOM_STRING_CHARS;
     let s = "";
     for (let i = 0; i < n; i++) s += chars[Math.floor(Math.random() * chars.length)];
     return s;
+}
+
+export async function reversedMd5(str) {
+    const encoded = new TextEncoder().encode(str);
+    const buf = await crypto.subtle.digest("MD5", encoded);
+
+    return Array.from(new Uint8Array(buf))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("")
+        .split("")
+        .reverse()
+        .join("");
 }
 
 export function makeClientToken() {
@@ -92,82 +125,16 @@ export function makeClientToken() {
     return randomString(6) + btoa(JSON.stringify(obj));
 }
 
-export function generateTryitKey() {
-    const r = String(Math.round(Math.random() * 100_000_000_000));
-    const s = "hackers_become_a_little_stinkier_every_time_they_hack";
-    function md5(str) {
-        function safeAdd(x, y) { const lsw = (x & 0xffff) + (y & 0xffff); return (((x >> 16) + (y >> 16) + (lsw >> 16)) << 16) | (lsw & 0xffff); }
-        function bitRotateLeft(num, cnt) { return (num << cnt) | (num >>> (32 - cnt)); }
-        function md5cmn(q, a, b, x, s, t) { return safeAdd(bitRotateLeft(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b); }
-        function md5ff(a, b, c, d, x, s, t) { return md5cmn((b & c) | (~b & d), a, b, x, s, t); }
-        function md5gg(a, b, c, d, x, s, t) { return md5cmn((b & d) | (c & ~d), a, b, x, s, t); }
-        function md5hh(a, b, c, d, x, s, t) { return md5cmn(b ^ c ^ d, a, b, x, s, t); }
-        function md5ii(a, b, c, d, x, s, t) { return md5cmn(c ^ (b | ~d), a, b, x, s, t); }
-        const bytes = new TextEncoder().encode(str);
-        const len8 = bytes.length;
-        const len32 = len8 >> 2;
-        const tail = len8 & 3;
-        let words = new Int32Array(((len8 + 72) >> 6 << 4) + 16);
-        for (let i = 0; i < len32; i++) words[i] = bytes[i * 4] | (bytes[i * 4 + 1] << 8) | (bytes[i * 4 + 2] << 16) | (bytes[i * 4 + 3] << 24);
-        let remaining = 0;
-        for (let i = 0; i < tail; i++) remaining |= bytes[len32 * 4 + i] << (i * 8);
-        words[len32] = remaining | (0x80 << (tail * 8));
-        words[words.length - 2] = len8 * 8;
-        let a = 1732584193, b = -271733879, c = -1732584194, d = 271733878;
-        for (let i = 0; i < words.length; i += 16) {
-            const [oa, ob, oc, od] = [a, b, c, d];
-            a = md5ff(a, b, c, d, words[i], 7, -680876936); d = md5ff(d, a, b, c, words[i + 1], 12, -389564586); c = md5ff(c, d, a, b, words[i + 2], 17, 606105819); b = md5ff(b, c, d, a, words[i + 3], 22, -1044525330);
-            a = md5ff(a, b, c, d, words[i + 4], 7, -176418897); d = md5ff(d, a, b, c, words[i + 5], 12, 1200080426); c = md5ff(c, d, a, b, words[i + 6], 17, -1473231341); b = md5ff(b, c, d, a, words[i + 7], 22, -45705983);
-            a = md5ff(a, b, c, d, words[i + 8], 7, 1770035416); d = md5ff(d, a, b, c, words[i + 9], 12, -1958414417); c = md5ff(c, d, a, b, words[i + 10], 17, -42063); b = md5ff(b, c, d, a, words[i + 11], 22, -1990404162);
-            a = md5ff(a, b, c, d, words[i + 12], 7, 1804603682); d = md5ff(d, a, b, c, words[i + 13], 12, -40341101); c = md5ff(c, d, a, b, words[i + 14], 17, -1502002290); b = md5ff(b, c, d, a, words[i + 15], 22, 1236535329);
-            a = md5gg(a, b, c, d, words[i + 1], 5, -165796510); d = md5gg(d, a, b, c, words[i + 6], 9, -1069501632); c = md5gg(c, d, a, b, words[i + 11], 14, 643717713); b = md5gg(b, c, d, a, words[i], 20, -373897302);
-            a = md5gg(a, b, c, d, words[i + 5], 5, -701558691); d = md5gg(d, a, b, c, words[i + 10], 9, 38016083); c = md5gg(c, d, a, b, words[i + 15], 14, -660478335); b = md5gg(b, c, d, a, words[i + 4], 20, -405537848);
-            a = md5gg(a, b, c, d, words[i + 9], 5, 568446438); d = md5gg(d, a, b, c, words[i + 14], 9, -1019803690); c = md5gg(c, d, a, b, words[i + 3], 14, -187363961); b = md5gg(b, c, d, a, words[i + 8], 20, 1163531501);
-            a = md5gg(a, b, c, d, words[i + 13], 5, -1444681467); d = md5gg(d, a, b, c, words[i + 2], 9, -51403784); c = md5gg(c, d, a, b, words[i + 7], 14, 1735328473); b = md5gg(b, c, d, a, words[i + 12], 20, -1926607734);
-            a = md5hh(a, b, c, d, words[i + 5], 4, -378558); d = md5hh(d, a, b, c, words[i + 8], 11, -2022574463); c = md5hh(c, d, a, b, words[i + 11], 16, 1839030562); b = md5hh(b, c, d, a, words[i + 14], 23, -35309556);
-            a = md5hh(a, b, c, d, words[i + 1], 4, -1530992060); d = md5hh(d, a, b, c, words[i + 4], 11, 1272893353); c = md5hh(c, d, a, b, words[i + 7], 16, -155497632); b = md5hh(b, c, d, a, words[i + 10], 23, -1094730640);
-            a = md5hh(a, b, c, d, words[i + 13], 4, 681279174); d = md5hh(d, a, b, c, words[i], 11, -358537222); c = md5hh(c, d, a, b, words[i + 3], 16, -722521979); b = md5hh(b, c, d, a, words[i + 6], 23, 76029189);
-            a = md5hh(a, b, c, d, words[i + 9], 4, -640364487); d = md5hh(d, a, b, c, words[i + 12], 11, -421815835); c = md5hh(c, d, a, b, words[i + 15], 16, 530742520); b = md5hh(b, c, d, a, words[i + 2], 23, -995338651);
-            a = md5ii(a, b, c, d, words[i], 6, -198630844); d = md5ii(d, a, b, c, words[i + 7], 10, 1126891415); c = md5ii(c, d, a, b, words[i + 14], 15, -1416354905); b = md5ii(b, c, d, a, words[i + 5], 21, -57434055);
-            a = md5ii(a, b, c, d, words[i + 12], 6, 1700485571); d = md5ii(d, a, b, c, words[i + 3], 10, -1894986606); c = md5ii(c, d, a, b, words[i + 10], 15, -1051523); b = md5ii(b, c, d, a, words[i + 1], 21, -2054922799);
-            a = md5ii(a, b, c, d, words[i + 8], 6, 1873313359); d = md5ii(d, a, b, c, words[i + 15], 10, -30611744); c = md5ii(c, d, a, b, words[i + 6], 15, -1560198380); b = md5ii(b, c, d, a, words[i + 13], 21, 1309151649);
-            a = md5ii(a, b, c, d, words[i + 4], 6, -145523070); d = md5ii(d, a, b, c, words[i + 11], 10, -1120210379); c = md5ii(c, d, a, b, words[i + 2], 15, 718787259); b = md5ii(b, c, d, a, words[i + 9], 21, -343485551);
-            a = safeAdd(a, oa); b = safeAdd(b, ob); c = safeAdd(c, oc); d = safeAdd(d, od);
-        }
-        return [a, b, c, d].map(n => (n < 0 ? n + 4294967296 : n).toString(16).padStart(8, '0').match(/../g).reverse().join('')).join('');
-    }
-    const h1 = md5(UA + r + s);
-    const h2 = md5(UA + h1);
-    const h3 = md5(UA + h2);
-    return `tryit-${r}-${h3}`;
-}
-
-export async function md5Hex(str) {
-    const encoded = new TextEncoder().encode(str);
-    const buf = await crypto.subtle.digest("MD5", encoded);
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-export async function reversedMd5(str) {
-    return (await md5Hex(str)).split("").reverse().join("");
-}
-
-export async function makeProxyId(url) {
-    const id = (await reversedMd5(url + String(Date.now()))).slice(0, 24);
-    proxyCache.set(id, url);
-    return id;
-}
-
 export async function generateImageKey() {
     const rnd = String(Math.round(Math.random() * 100000000000));
-    const h1 = await reversedMd5(UA + rnd + "hackers_become_a_little_stinkier_every_time_they_hack");
+    const h1 = await reversedMd5(UA + rnd + SECURITY_CONSTANTS.HACKER_SECRET);
     const h2 = await reversedMd5(UA + h1);
     const h3 = await reversedMd5(UA + h2);
     return `tryit-${rnd}-${h3}`;
 }
 
 export function buildDeepAIImageBody(prompt, modelVer, prefKey) {
-    const boundary = "----DeepAIBound7MA4YWxkTrZu0gW";
+    const boundary = API_KEYS.DEEPAI_IMAGE_BOUNDARY;
     const fields = { text: prompt, image_generator_version: modelVer, generation_source: "img" };
     if (prefKey === "turbo") fields.turbo = "true";
     else fields.quality = "true";
@@ -194,16 +161,14 @@ export async function callDeepAIImage(prompt, modelVer, prefKey) {
         body,
     });
     const data = await res.json();
-    if (!data.output_url) {
-        throw new Error(data.err || data.status || data.error || JSON.stringify(data));
-    }
+    if (!data.output_url) throw new Error(data.err || data.status || data.error || JSON.stringify(data));
     return data.output_url;
 }
 
 export async function callPollinationsImage(prompt, model) {
     const polModel = model === "turbo-img" ? "turbo" : model;
-    const seed = Math.floor(Math.random() * 999999);
-    const url = `${POLLINATIONS_IMAGE_URL}${encodeURIComponent(prompt)}?model=${polModel}&width=1024&height=1024&nologo=true&private=true&seed=${seed}`;
+    const seed = Math.floor(Math.random() * IMAGE_GENERATION.SEED_RANGE);
+    const url = `${POLLINATIONS_IMAGE_URL}${encodeURIComponent(prompt)}?model=${polModel}&width=${IMAGE_GENERATION.DEFAULT_WIDTH}&height=${IMAGE_GENERATION.DEFAULT_HEIGHT}&nologo=true&private=true&seed=${seed}`;
     const res = await fetch(url, { headers: { "User-Agent": UA } });
     if (!res.ok) throw new Error(`Pollinations error ${res.status}`);
     return url;
@@ -211,6 +176,10 @@ export async function callPollinationsImage(prompt, model) {
 
 export function unescapeHtml(str) {
     return str.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+}
+
+export function cleanText(text) {
+    return text.replace(/\s+/g, ' ').trim();
 }
 
 export function labelToKey(label) {
@@ -298,8 +267,8 @@ export async function aiFreeComplete(prompt, messages, model) {
     const history = messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
     const body = {
         question: prompt,
-        tone: "friendly",
-        format: "paragraph",
+        tone: FORM_TEMPLATES.AIFREE_TONE,
+        format: FORM_TEMPLATES.AIFREE_FORMAT,
         file: null,
         conversationHistory: history,
         aiName: "",
@@ -322,37 +291,19 @@ export async function aiFreeComplete(prompt, messages, model) {
     return j.answer || j.response || j.data?.answer || j.data?.response || JSON.stringify(j);
 }
 
-function cleanText(text) {
-  return text
-    .replace(/^(Claude 3 Haiku|GPT 4\.1 nano|Gemini 2\.0 Flash-Lite|DeepSeek-V3)\s*/i, "")
-
-    .replace(/^"\s*/, "")
-    .replace(/\s*"$/, "")
-
-    .replace(/-1\b/g, "")
-
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-
-    .replace(/\s*([,.!?])\s*/g, "$1 ")
-
-    .replace(/\s+/g, " ")
-
-    .trim();
-}
-
 export async function vexaComplete(prompt, messages, model = "standard") {
-    const apiKey = generateTryitKey();
+    const apiKey = await generateImageKey();
     const sessionUuid = crypto.randomUUID ? crypto.randomUUID() : randomString(36);
     const chatHistory = JSON.stringify(
         messages.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }))
     );
     const formData = new URLSearchParams({
-        chat_style: "chat",
+        chat_style: FORM_TEMPLATES.VEXA_CHAT_STYLE,
         chatHistory,
         model,
         session_uuid: sessionUuid,
         hacker_is_stinky: "very_stinky",
-        enabled_tools: JSON.stringify(["image_generator", "image_editor"]),
+        enabled_tools: FORM_TEMPLATES.VEXA_ENABLED_TOOLS,
     });
     const resp = await fetch(`${DEEPAI_API}/hacking_is_a_serious_crime`, {
         method: "POST",
@@ -385,7 +336,7 @@ export async function pollinationsComplete(messages, model) {
     const r = await fetch(POLLINATIONS_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "User-Agent": UA },
-        body: JSON.stringify({ model: polModel, messages, temperature: 0.7, stream: false, private: true }),
+        body: JSON.stringify({ model: polModel, messages, temperature: TEMPERATURE_SETTINGS.DEFAULT, stream: false, private: true }),
     });
     if (!r.ok) throw new Error(`Pollinations error ${r.status}`);
     const j = await r.json();
@@ -426,34 +377,358 @@ export async function dolphinComplete(prompt, model) {
 
 export async function talkaiComplete(prompt, model) {
     const modelId = TALKAI_MODEL_IDS[model] || model;
-
-    const messages = [
-        { id: "0", from: "you", content: prompt, model: "" }
-    ];
-
-    const payload = {
-        type: "chat",
-        messagesHistory: messages,
-        settings: { model: modelId, temperature: 0.7 }
-    };
-
+    const messages = [{ id: "0", from: "you", content: prompt, model: "" }];
+    const payload = { type: "chat", messagesHistory: messages, settings: { model: modelId, temperature: TEMPERATURE_SETTINGS.DEFAULT } };
     const r = await fetch(TALKAI_URL, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "User-Agent": UA,
-            "Referer": "https://talkai.info/",
-            "Origin": "https://talkai.info"
-        },
+        headers: { "Content-Type": "application/json", "User-Agent": UA, "Referer": "https://talkai.info/", "Origin": "https://talkai.info" },
         body: JSON.stringify(payload),
     });
+    if (!r.ok) throw new Error(`TalkAI error ${r.status}`);
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+    let buf = "";
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+            if (!line.startsWith("data:")) continue;
+            const data = line.slice(5).trim();
+            if (!data || data === "[DONE]") continue;
+            full += data + " ";
+        }
+    }
+    if (buf.trim().startsWith("data:")) {
+        const data = buf.trim().slice(5).trim();
+        if (data && data !== "[DONE]") full += data + " ";
+    }
+    return cleanText(full.trim());
+}
 
+export function resolveSource(model) {
+    if (TALKAI_MODELS.has(model)) return "talkai.info";
+    if (DOLPHIN_MODELS.has(model)) return "dphn.ai";
+    if (POLLINATIONS_MODELS.has(model)) return "pollinations.ai";
+    if (DEEPAI_MODELS.has(model) || model === "vexa") return "deepai.org";
+    if (model === "gpt-5") return "aifreeforever.com";
+    return "toolbaz.com";
+}
+
+export function resolveModelRoute(model, toolbazModels, deepaiModels) {
+    if (TALKAI_MODELS.has(model) && PROVIDER_SETTINGS.talkai) return "talkai";
+    if (DOLPHIN_MODELS.has(model) && PROVIDER_SETTINGS.dolphin) return "dolphin";
+    if (POLLINATIONS_MODELS.has(model) && PROVIDER_SETTINGS.pollinations) return "pollinations";
+    if ((DEEPAI_MODELS.has(model) || (deepaiModels && deepaiModels.has(model)) || model === "vexa") && PROVIDER_SETTINGS.deepai) return "deepai";
+    if (model === "gpt-5" && PROVIDER_SETTINGS.aifree) return "aifree";
+    if (toolbazModels && toolbazModels.has(model) && PROVIDER_SETTINGS.toolbaz) return "toolbaz";
+    return "toolbaz";
+}
+
+export function resolveDeepAIModel(model) {
+    return model === "vexa" ? "standard" : model;
+}
+
+export function resolveImageRoute(model) {
+    if (POLLINATIONS_IMAGE_MODELS.has(model)) return "pollinations";
+    if (DEEPAI_IMAGE_MODELS.has(model)) return "deepai";
+    return null;
+}
+
+export function resolveImageSource(model) {
+    return POLLINATIONS_IMAGE_MODELS.has(model) ? "pollinations.ai" : "deepai.org";
+}
+
+export function resolveImagePrefKey(preference) {
+    return IMAGE_PREFERENCES[preference] || null;
+}
+
+export function validImageModels() {
+    return [...DEEPAI_IMAGE_MODELS, ...POLLINATIONS_IMAGE_MODELS].join(", ");
+}
+
+export function scrapeToolbazModels(html) {
+    const selectMatch = html.match(/<select[^>]*\bname=["']?model["']?[^>]*>([\s\S]*?)(?:<\/select>|$)/i);
+    if (!selectMatch) return {};
+    const block = selectMatch[1];
+    const valueToLabel = {};
+    const keys = [];
+    const seen = new Set();
+    for (const m of block.matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)[^>]*>\s*([^\n<]+)/gi)) {
+        const val = unescapeHtml(m[1].trim());
+        const label = unescapeHtml(m[2].trim());
+        if (val && !seen.has(val)) { keys.push(val); seen.add(val); valueToLabel[val] = label; }
+    }
+    const providerMap = {};
+    const segments = html.split(/(By\s+[^\n<]{2,60})/);
+    let currentProvider = "";
+    for (const seg of segments) {
+        const by = seg.match(/^By\s+(.+)/);
+        if (by) {
+            currentProvider = by[1].replace(/[^\w\s()]/g, "").trim();
+        } else {
+            for (const m of seg.matchAll(/data-value=(?:["']?)([^"'>\s]+)/gi)) {
+                if (!providerMap[m[1].trim()]) providerMap[m[1].trim()] = currentProvider;
+            }
+        }
+    }
+    const dvPositions = [...html.matchAll(/data-value=(?:["']?)([^"'>\s]+)/gi)].map(m => ({ start: m.index, val: m[1] }));
+    const speedMap = {};
+    const qualityMap = {};
+    dvPositions.forEach(({ start, val }, i) => {
+        const end = i + 1 < dvPositions.length ? dvPositions[i + 1].start : start + 2000;
+        const window = html.slice(start, end);
+        const spd = window.match(/(\d+)\s*W\/s/);
+        const qlt = window.match(/quality-indicator[^>]*>(?:\s*<[^>]+>)*\s*(\d+)/);
+        if (spd) speedMap[val] = parseInt(spd[1]);
+        if (qlt) qualityMap[val] = parseInt(qlt[1]);
+    });
+    const result = {};
+    for (const val of keys) {
+        if (val in DEEPAI_MODEL_OVERRIDES) continue;
+        result[val] = { label: valueToLabel[val] || val, provider: providerMap[val] || "", speed: speedMap[val] || 0, quality: qualityMap[val] || 0 };
+    }
+    return result;
+}
+
+export async function scrapeDeepAIFreeModels() {
+    try {
+        const r = await fetch(DEEPAI_CHAT_URL, { headers: { "User-Agent": UA } });
+        if (!r.ok) return new Set(Object.keys(DEEPAI_MODEL_OVERRIDES));
+        const html = await r.text();
+        const freeKeys = new Set(["vexa"]);
+        const lockPattern = /lock-icon/;
+        const spanPattern = /<span[^>]*>([^<]+)<\/span>/;
+        const blocks = html.split(/<div[^>]*class="[^"]*chat-mode-menu-item/i).slice(1);
+        for (const block of blocks) {
+            if (/chat-mode-locked/.test(block) || lockPattern.test(block)) continue;
+            const spanMatch = block.match(spanPattern);
+            if (!spanMatch) continue;
+            const label = unescapeHtml(spanMatch[1].trim());
+            if (!label || label.length < 2) continue;
+            const known = Object.entries(DEEPAI_MODEL_OVERRIDES).find(([, v]) => v.label.toLowerCase() === label.toLowerCase());
+            freeKeys.add(known ? known[0] : labelToKey(label));
+        }
+        for (const key of Object.keys(DEEPAI_MODEL_OVERRIDES)) freeKeys.add(key);
+        return freeKeys;
+    } catch (_) {
+        return new Set(Object.keys(DEEPAI_MODEL_OVERRIDES));
+    }
+}
+
+export async function fetchAvailableModels() {
+    try {
+        const r = await fetch(TOOLBAZ_PAGE_URL, { headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" } });
+        if (!r.ok) return [];
+        const html = await r.text();
+        const selectMatch = html.match(/<select[^>]*\bname=["']?model["']?[^>]*>([\s\S]*?)(?:<\/select>|$)/i);
+        if (!selectMatch) return [];
+        const seen = new Set();
+        const keys = [];
+        for (const m of selectMatch[1].matchAll(/<option[^>]*\bvalue=["']?([^"'\s>]+)/gi)) {
+            const k = m[1].trim();
+            if (k && !seen.has(k)) { keys.push(k); seen.add(k); }
+        }
+        return keys;
+    } catch (_) { return []; }
+}
+
+export async function checkPage() {
+    const t0 = Date.now();
+    try {
+        const r = await fetch(TOOLBAZ_PAGE_URL, { headers: { "User-Agent": UA } });
+        return { reachable: r.ok, status: r.status, latency_ms: Date.now() - t0 };
+    } catch (e) {
+        return { reachable: false, error: e.message, latency_ms: Date.now() - t0 };
+    }
+}
+
+export async function checkToken() {
+    const t0 = Date.now();
+    try {
+        const token = makeClientToken();
+        const body = new URLSearchParams({ session_id: randomString(32), token });
+        const r = await fetch(TOKEN_URL, { method: "POST", headers: POST_HDRS, body: body.toString() });
+        if (!r.ok) return { reachable: false, token_received: false, status: r.status, latency_ms: Date.now() - t0 };
+        const j = await r.json();
+        return { reachable: true, token_received: !!j.token, status: r.status, latency_ms: Date.now() - t0 };
+    } catch (e) {
+        return { reachable: false, token_received: false, error: e.message, latency_ms: Date.now() - t0 };
+    }
+}
+
+export async function checkImage() {
+    const t0 = Date.now();
+    try {
+        const r = await fetch(DEEPAI_IMAGE_URL, { method: "HEAD", headers: { "User-Agent": UA } });
+        return { reachable: r.status < 500, status: r.status, latency_ms: Date.now() - t0 };
+    } catch (e) {
+        return { reachable: false, error: e.message, latency_ms: Date.now() - t0 };
+    }
+}
+
+export async function checkModel(model) {
+    const t0 = Date.now();
+    try {
+        if (TALKAI_MODELS.has(model) && !PROVIDER_SETTINGS.talkai) return { ok: false, error: "Provider disabled", latency_ms: Date.now() - t0 };
+        if (DOLPHIN_MODELS.has(model) && !PROVIDER_SETTINGS.dolphin) return { ok: false, error: "Provider disabled", latency_ms: Date.now() - t0 };
+        if (POLLINATIONS_MODELS.has(model) && !PROVIDER_SETTINGS.pollinations) return { ok: false, error: "Provider disabled", latency_ms: Date.now() - t0 };
+        if ((DEEPAI_MODELS.has(model) || model === "vexa") && !PROVIDER_SETTINGS.deepai) return { ok: false, error: "Provider disabled", latency_ms: Date.now() - t0 };
+
+        const msgs = [{ role: "user", content: HEALTH_PROBE }];
+        let text;
+        if (TALKAI_MODELS.has(model)) text = await talkaiComplete(HEALTH_PROBE, model);
+        else if (DOLPHIN_MODELS.has(model)) text = await dolphinComplete(HEALTH_PROBE, model);
+        else if (POLLINATIONS_MODELS.has(model)) text = await pollinationsComplete(msgs, model);
+        else if (DEEPAI_MODELS.has(model) || model === "vexa") text = await vexaComplete(HEALTH_PROBE, msgs, model === "vexa" ? "standard" : model);
+        else if (PROVIDER_SETTINGS.toolbaz) text = await toolbazComplete(HEALTH_PROBE, model);
+        else return { ok: false, error: "Provider disabled", latency_ms: Date.now() - t0 };
+
+        return { ok: typeof text === "string" && text.length > 0, latency_ms: Date.now() - t0 };
+    } catch (e) {
+        return { ok: false, error: e.message, latency_ms: Date.now() - t0 };
+    }
+}
+
+export async function completeWithAI(prompt, messages, model) {
+    const msgs = messages || [{ role: "user", content: prompt }];
+    const { toolbaz: toolbazModels, deepai: deepaiModels } = await getValidModels();
+    const route = resolveModelRoute(model, toolbazModels, deepaiModels);
+
+    if (route === "talkai") return await talkaiComplete(prompt, model);
+    if (route === "dolphin") return await dolphinComplete(prompt, model);
+    if (route === "pollinations") return await pollinationsComplete(msgs, model);
+    if (route === "deepai") return await vexaComplete(prompt, msgs, resolveDeepAIModel(model));
+    if (route === "aifree") return await aiFreeComplete(prompt, msgs, model);
+    return parseFull(await toolbazComplete(prompt, model));
+}
+
+export async function generateImage(prompt, model, preference) {
+    const route = resolveImageRoute(model);
+    if (!route) throw new Error(`Invalid model. Valid values: ${validImageModels()}`);
+    if (route === "pollinations" && !PROVIDER_SETTINGS.pollinations) throw new Error("Pollinations provider is disabled");
+    if (route === "deepai" && !PROVIDER_SETTINGS.deepai) throw new Error("DeepAI provider is disabled");
+    if (route === "pollinations") return await callPollinationsImage(String(prompt).trim().slice(0, 1000), model);
+    const prefKey = resolveImagePrefKey(preference);
+    if (!prefKey) throw new Error("Invalid preference. Valid values: speed, quality");
+    return await callDeepAIImage(String(prompt).trim().slice(0, 1000), "hd", prefKey);
+}
+
+export async function completeWithAIStream(prompt, messages, model, onChunk) {
+    const msgs = messages || [{ role: "user", content: prompt }];
+    const { toolbaz: toolbazModels, deepai: deepaiModels } = await getValidModels();
+    const route = resolveModelRoute(model, toolbazModels, deepaiModels);
+
+    if (route === "talkai") return await talkaiCompleteStream(prompt, model, onChunk);
+    if (route === "dolphin") return await dolphinCompleteStream(prompt, model, onChunk);
+    if (route === "pollinations") return await pollinationsCompleteStream(msgs, model, onChunk);
+    if (route === "deepai") return await vexaCompleteStream(prompt, msgs, resolveDeepAIModel(model), onChunk);
+    if (route === "aifree") return await aiFreeCompleteStream(prompt, msgs, model, onChunk);
+    return await toolbazCompleteStream(prompt, model, onChunk);
+}
+
+export async function pollinationsCompleteStream(messages, model, onChunk) {
+    const polModel = model.replace(/^pol-/, "");
+    const r = await fetch(POLLINATIONS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA },
+        body: JSON.stringify({ model: polModel, messages, temperature: TEMPERATURE_SETTINGS.DEFAULT, stream: true, private: true }),
+    });
+    if (!r.ok) throw new Error(`Pollinations error ${r.status}`);
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+
+        for (const line of lines) {
+            const t = line.trim();
+            if (!t || t === "data: [DONE]") continue;
+            if (t.startsWith("data: ")) {
+                try {
+                    const obj = JSON.parse(t.slice(6));
+                    const chunk = obj.choices?.[0]?.delta?.content || "";
+                    if (chunk) onChunk(chunk);
+                } catch (_) { }
+            }
+        }
+    }
+
+    if (buf.trim().startsWith("data: ") && buf.trim() !== "data: [DONE]") {
+        try {
+            const obj = JSON.parse(buf.trim().slice(6));
+            const chunk = obj.choices?.[0]?.delta?.content || "";
+            if (chunk) onChunk(chunk);
+        } catch (_) { }
+    }
+}
+
+export async function dolphinCompleteStream(prompt, model, onChunk) {
+    const template = DOLPHIN_TEMPLATE_MAP[model] || "logical";
+    const r = await fetch(DOLPHIN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA, "Referer": "https://chat.dphn.ai/", "Origin": "https://chat.dphn.ai" },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }], model: "dolphinserver:24B", template }),
+    });
+    if (!r.ok) throw new Error(`Dolphin error ${r.status}`);
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+
+        for (const line of lines) {
+            const t = line.trim();
+            if (!t || t === "data: [DONE]") continue;
+            if (t.startsWith("data: ")) {
+                try {
+                    const obj = JSON.parse(t.slice(6));
+                    const chunk = obj.choices?.[0]?.delta?.content || "";
+                    if (chunk) onChunk(chunk);
+                } catch (_) { }
+            }
+        }
+    }
+
+    if (buf.trim().startsWith("data: ") && buf.trim() !== "data: [DONE]") {
+        try {
+            const obj = JSON.parse(buf.trim().slice(6));
+            const chunk = obj.choices?.[0]?.delta?.content || "";
+            if (chunk) onChunk(chunk);
+        } catch (_) { }
+    }
+}
+
+export async function talkaiCompleteStream(prompt, model, onChunk) {
+    const modelId = TALKAI_MODEL_IDS[model] || model;
+    const messages = [{ id: "0", from: "you", content: prompt, model: "" }];
+    const payload = { type: "chat", messagesHistory: messages, settings: { model: modelId, temperature: TEMPERATURE_SETTINGS.DEFAULT } };
+    const r = await fetch(TALKAI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA, "Referer": "https://talkai.info/", "Origin": "https://talkai.info" },
+        body: JSON.stringify(payload),
+    });
     if (!r.ok) throw new Error(`TalkAI error ${r.status}`);
 
     const reader = r.body.getReader();
     const decoder = new TextDecoder();
-
-    let full = "";
     let buf = "";
 
     while (true) {
@@ -466,27 +741,48 @@ export async function talkaiComplete(prompt, model) {
 
         for (const line of lines) {
             if (!line.startsWith("data:")) continue;
-
             const data = line.slice(5).trim();
             if (!data || data === "[DONE]") continue;
-
-            full += data + " ";
+            onChunk(data + " ");
         }
     }
 
     if (buf.trim().startsWith("data:")) {
         const data = buf.trim().slice(5).trim();
-        if (data && data !== "[DONE]") full += data + " ";
+        if (data && data !== "[DONE]") onChunk(data + " ");
     }
-
-    return cleanText(full.trim());
 }
 
-export function resolveSource(model) {
-    if (TALKAI_MODELS.has(model)) return "talkai.info";
-    if (DOLPHIN_MODELS.has(model)) return "dphn.ai";
-    if (POLLINATIONS_MODELS.has(model)) return "pollinations.ai";
-    if (DEEPAI_MODELS.has(model) || model === "vexa") return "deepai.org";
-    if (model === "gpt-5") return "aifreeforever.com";
-    return "toolbaz.com";
+export async function vexaCompleteStream(prompt, messages, model, onChunk) {
+    const fullText = await vexaComplete(prompt, messages, model);
+    const chunks = fullText.match(/.{1,4}/g) || [];
+    for (const chunk of chunks) {
+        onChunk(chunk);
+        await new Promise(r => setTimeout(r, 10));
+    }
+}
+
+export async function aiFreeCompleteStream(prompt, messages, model, onChunk) {
+    const fullText = await aiFreeComplete(prompt, messages, model);
+    const chunks = fullText.match(/.{1,4}/g) || [];
+    for (const chunk of chunks) {
+        onChunk(chunk);
+        await new Promise(r => setTimeout(r, 10));
+    }
+}
+
+export async function toolbazCompleteStream(prompt, model, onChunk) {
+    const fullText = await toolbazComplete(prompt, model);
+    const chunks = fullText.match(/.{1,4}/g) || [];
+    for (const chunk of chunks) {
+        onChunk(chunk);
+        await new Promise(r => setTimeout(r, 10));
+    }
+}
+
+export async function makeProxyId(url) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(url));
+    const id = btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "").slice(0, 32);
+    proxyCache.set(id, url);
+    return id;
 }

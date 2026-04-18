@@ -28,13 +28,6 @@ Returns all available text and image models. Text models are scraped live from T
       "label": "Model Display Name",
       "description": "Model description"
     }
-  ],
-  "pollinations_models": [
-    {
-      "key": "model-key",
-      "label": "Model Display Name",
-      "provider": "Provider Name"
-    }
   ]
 }
 ```
@@ -70,7 +63,7 @@ Returned under `image_models`. Defined in `IMAGE_MODELS` in `core.js`. Pass the 
 |------|----------|-------|
 | `hd` | DeepAI | Default — supports `preference` param |
 | `flux` | Pollinations.ai | Fast, high quality |
-| `turbo` | Pollinations.ai | Fastest generation |
+| `turbo-img` | Pollinations.ai | Fastest generation |
 | `kontext` | Pollinations.ai | Instruction-following edits |
 | `seedream` | Pollinations.ai | ByteDance — photorealistic |
 | `nanobanana` | Pollinations.ai | Gemini-powered — high detail |
@@ -81,7 +74,7 @@ Returned under `image_models`. Defined in `IMAGE_MODELS` in `core.js`. Pass the 
 
 ## Pollinations Text Models
 
-Returned separately under `pollinations_models`. Defined in `POLLINATIONS_TEXT_MODELS_LIST` in `core.js`. Pass the `key` as the `model` param to `/query` or `/chat`.
+Pollinations text models are included in the main `models` object alongside other providers. Defined in `POLLINATIONS_TEXT_MODELS_LIST` in `core.js`. Pass the model key as the `model` param to `/query` or `/chat`.
 
 | Key | Label | Provider |
 |-----|-------|----------|

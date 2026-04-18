@@ -67,14 +67,16 @@ curl "/health"
 
 ## Docs
 
-- [Core →](./core.md)
+- [Core →](./CORE.md)
 - [Models →](./MODELS.md)
-- [Query →](./QUERY.md)
-- [Chat →](./CHAT.md)
-- [Image →](./IMAGE.md)
-- [Health →](./HEALTH.md)
+- [Query →](./query.md)
+- [Chat →](./chat.md)
+- [Image →](./image.md)
+- [Health →](./health.md)
 
 ---
+
+## Caching
 
 In-memory per serverless instance, resets on cold starts.
 
@@ -99,7 +101,7 @@ In-memory per serverless instance, resets on cold starts.
 
 ```
 functions/
-├── _worker.js        # Main worker — routes requests to handlers
+├── _worker.js        # Main worker — routes requests to handlers (entry point)
 ├── core.js           # Shared constants, model definitions, utilities
 ├── index.js          # GET / - API documentation
 ├── query.js          # GET POST /query

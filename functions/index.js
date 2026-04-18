@@ -5,31 +5,32 @@ import { onRequest as imageProxyHandler } from './image/proxy/[[id]].js';
 import { onRequest as modelsHandler } from './models.js';
 import { onRequest as queryHandler } from './query.js';
 import { onRequest as notFoundHandler } from './404.js';
+import { DEFAULT_MODEL, DEFAULT_IMAGE_MODEL } from './core.js';
 
 const endpointsData = {
     base: "",
     defaults: {
-        chat_model: "vexa",
-        image_model: "hd",
-        query_model: "vexa"
+        chat_model: DEFAULT_MODEL,
+        image_model: DEFAULT_IMAGE_MODEL,
+        query_model: DEFAULT_MODEL
     },
     endpoints: {
         "/chat": {
             POST: {
                 body: {
-                    model: "vexa",
+                    model: DEFAULT_MODEL,
                     messages: [{ role: "user", content: "Hello" }]
                 },
-                example: 'POST /chat {"model":"vexa","messages":[{"role":"user","content":"Hello"}]}'
+                example: `POST /chat {"model":"${DEFAULT_MODEL}","messages":[{"role":"user","content":"Hello"}]}`
             }
         },
         "/image": {
             GET: "/image?q=a+cat",
             GET_2: "/image?q=a+castle&preference=quality",
-            GET_3: "/image?q=a+castle&model=hd",
+            GET_3: `/image?q=a+castle&model=${DEFAULT_IMAGE_MODEL}`,
             POST: {
-                body: { prompt: "a cat", model: "hd", preference: "speed" },
-                example: 'POST /image {"prompt":"a cat","model":"hd"}'
+                body: { prompt: "a cat", model: DEFAULT_IMAGE_MODEL, preference: "speed" },
+                example: `POST /image {"prompt":"a cat","model":"${DEFAULT_IMAGE_MODEL}"}`
             },
             models: ["hd", "flux", "turbo-img", "kontext", "seedream", "nanobanana"]
         },
@@ -38,10 +39,10 @@ const endpointsData = {
         },
         "/query": {
             GET: "/query?q=What+is+AI?",
-            GET_2: "/query?q=What+is+AI?&model=vexa",
+            GET_2: `/query?q=What+is+AI?&model=${DEFAULT_MODEL}`,
             POST: {
-                body: { prompt: "What is AI?", model: "vexa" },
-                example: 'POST /query {"prompt":"What is AI?","model":"vexa"}'
+                body: { prompt: "What is AI?", model: DEFAULT_MODEL },
+                example: `POST /query {"prompt":"What is AI?","model":"${DEFAULT_MODEL}"}`
             }
         },
         "/models": {

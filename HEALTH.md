@@ -63,9 +63,8 @@ Returns live status of all upstream services — Toolbaz page, token endpoint, D
 ## Notes
 
 - All model probes run in parallel — `total_ms` reflects the slowest check, not the sum.
-- To prevent timeout, only the first 10 models are probed; remaining models are marked as skipped.
-- Each model check has a 10-second timeout.
-- The Pollinations probe (`pol-openai-fast`) probes a single model and copies the result to all Pollinations model keys to avoid rate limiting.
+- To prevent timeout, only the first 100 models are probed; remaining models are marked as skipped.
+- The Pollinations probe (`pol-openai-fast`) probes each Pollinations model independently.
 - TalkAI models are probed individually as separate model keys.
 - The image check probing `401` is expected — DeepAI requires auth for HEAD requests but generation still works via the keyless flow.
 - `status` is `degraded` if any model probe fails or any upstream is unreachable.

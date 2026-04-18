@@ -106,6 +106,5 @@ else:
 | Status | Error |
 |--------|-------|
 | `400` | `Missing required parameter: q, query, or prompt` |
-| `400` | `Unknown model 'x'` |
 | `429` | `Rate limit exceeded. Try again shortly.` |
 | `502` | `Upstream request failed` |
