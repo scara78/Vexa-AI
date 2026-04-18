@@ -7,6 +7,8 @@ GET  /query
 POST /query
 ```
 
+All model routing, upstream URLs, and completion functions are sourced from `core.js`.
+
 ---
 
 ## GET
@@ -21,7 +23,7 @@ curl "/query?q=Hello&model=vexa"
 | Param | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `q` / `query` | yes | — | Your prompt |
-| `model` | no | `vexa` | Model ID. See [`/models`](./MODELS.md). |
+| `model` | no | `vexa` | Model ID. See [/models](./MODELS.md). |
 
 ---
 
@@ -60,7 +62,7 @@ curl -X POST /query \
 | `response` | string | Model response text |
 | `model` | string | Model used |
 | `elapsed_ms` | number | Time to generate |
-| `source` | string | Upstream used — `deepai.org`, `toolbaz.com`, `aifreeforever.com`, or `pollinations.ai` |
+| `source` | string | Upstream used — `deepai.org`, `toolbaz.com`, `dphn.ai`, `aifreeforever.com`, `pollinations.ai`, or `talkai.info` |
 
 ---
 
@@ -104,7 +106,6 @@ else:
 | Status | Error |
 |--------|-------|
 | `400` | `Missing required parameter: q, query, or prompt` |
-| `400` | `Prompt exceeds maximum length of 4000 characters` |
 | `400` | `Unknown model 'x'` |
 | `429` | `Rate limit exceeded. Try again shortly.` |
 | `502` | `Upstream request failed` |

@@ -67,6 +67,7 @@ curl "/health"
 
 ## Docs
 
+- [Core →](./core.md)
 - [Models →](./MODELS.md)
 - [Query →](./QUERY.md)
 - [Chat →](./CHAT.md)
@@ -98,6 +99,8 @@ In-memory per serverless instance, resets on cold starts.
 
 ```
 functions/
+├── _worker.js        # Main worker — routes requests to handlers
+├── core.js           # Shared constants, model definitions, utilities
 ├── index.js          # GET / - API documentation
 ├── query.js          # GET POST /query
 ├── chat.js           # POST /chat
@@ -114,7 +117,7 @@ wrangler.toml         # Cloudflare Pages config
 ## Deploy
 
 ```bash
-git clone https://github.com/your-username/vexa-ai
+git clone https://github.com/vexa-intelligence/ai
 npm i -g wrangler
 wrangler pages deploy .
 ```

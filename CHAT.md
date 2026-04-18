@@ -32,14 +32,14 @@ curl -X POST /chat \
 | Field | Required | Description |
 |-------|----------|-------------|
 | `messages` | yes | Array of message objects (at least one) |
-| `model` | no | Model ID. Defaults to `vexa`. Falls back to `vexa` if the given model is not valid. See [/models](./MODELS.md). |
+| `model` | no | Model ID. Defaults to `vexa`. Falls back to `vexa` if the given model is invalid. See [/models](./MODELS.md). |
 | `stream` | no | Set to `true` to enable streaming responses. Defaults to `false`. |
 
 ### Message object
 
 | Field | Required | Values |
 |-------|----------|--------|
-| `role` | yes | `system` or `user` or `assistant` |
+| `role` | yes | `system`, `user`, or `assistant` |
 | `content` | yes | string |
 
 ---
@@ -79,14 +79,11 @@ curl -X POST /chat \
 
 ### Streaming format
 
-Each chunk is prefixed with `data: ` and contains JSON in OpenAI's SSE format:
+Each chunk is prefixed with `data: ` and contains JSON in OpenAI SSE format:
 
 ```
 data: {"choices":[{"delta":{"content":"H"},"finish_reason":null}]}
 data: {"choices":[{"delta":{"content":"e"},"finish_reason":null}]}
-data: {"choices":[{"delta":{"content":"l"},"finish_reason":null}]}
-data: {"choices":[{"delta":{"content":"l"},"finish_reason":null}]}
-data: {"choices":[{"delta":{"content":"o"},"finish_reason":null}]}
 data: {"choices":[{"delta":{},"finish_reason":"stop"}]}
 data: [DONE]
 ```
@@ -95,23 +92,24 @@ data: [DONE]
 |-------|------|-------------|
 | `choices[0].delta.content` | string | Content chunk (character by character) |
 | `choices[0].finish_reason` | string | `null` while streaming, `"stop"` when complete |
-| `data: [DONE]` | - | Final marker indicating stream completion |
+| `data: [DONE]` | — | Final marker indicating stream completion |
 
 ---
 
 ## How Context Works
 
-For Toolbaz-routed models, messages are concatenated into a single prompt:
+For Toolbaz-routed models, messages are concatenated into a single prompt via `messagesToPrompt` from `core.js`:
 
 ```
 [System]: {system content}
 
-User: {first user message}Assistant: {first assistant message}
+User: {first user message}
+Assistant: {first assistant message}
 User: {second user message}
 Assistant:
 ```
 
-For DeepAI and Pollinations models the full messages array is sent natively. You are responsible for passing the full history each turn.
+For DeepAI and Pollinations models the full messages array is passed natively. You are responsible for passing the full history each turn.
 
 ---
 
@@ -159,6 +157,5 @@ def chat(msg, model='vexa'):
 | `400` | `Missing or empty 'messages' array` |
 | `400` | `messages[N].role must be 'system', 'user', or 'assistant'` |
 | `400` | `messages[N].content must be a string` |
-| `400` | `Conversation exceeds maximum length of 16000 characters` |
 | `429` | `Rate limit exceeded. Try again shortly.` |
 | `502` | `Upstream request failed: <detail>` |

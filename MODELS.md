@@ -4,7 +4,7 @@
 GET /models
 ```
 
-Returns all available text and image models. Text models are scraped live from Toolbaz and cached for 5 minutes. DeepAI and Pollinations models are injected on top of the scraped list.
+Returns all available text and image models. Text models are scraped live from Toolbaz and cached for 5 minutes. DeepAI, Dolphin, TalkAI, and Pollinations models are injected on top of the scraped list via `DEEPAI_MODEL_OVERRIDES` and `POLLINATIONS_TEXT_MODELS_LIST` defined in `core.js`.
 
 ---
 
@@ -43,7 +43,7 @@ Returns all available text and image models. Text models are scraped live from T
 
 ## Text Models
 
-Scraped live from Toolbaz on every cache miss. Includes models from Google, OpenAI, Anthropic, DeepSeek, Facebook (Meta), xAI, and Toolbaz. DeepAI models and `gpt-5` via AIFreeForever are injected regardless of the scrape.
+Scraped live from Toolbaz on every cache miss. Includes models from Google, OpenAI, Anthropic, DeepSeek, Facebook (Meta), Alibaba, and Toolbaz. All models in `DEEPAI_MODEL_OVERRIDES` are injected regardless of the scrape result.
 
 Use `GET /models` to discover what's currently available — the list updates as Toolbaz adds or removes models.
 
@@ -64,26 +64,31 @@ Use `GET /models` to discover what's currently available — the list updates as
 
 ## Image Models
 
-Returned under `image_models`. Pass the exact `name` to `/image?model=` or the POST body.
+Returned under `image_models`. Defined in `IMAGE_MODELS` in `core.js`. Pass the exact `name` to `/image?model=` or the POST body.
 
 | Name | Provider | Notes |
 |------|----------|-------|
-| `model-name` | Provider | Model description |
+| `hd` | DeepAI | Default — supports `preference` param |
+| `flux` | Pollinations.ai | Fast, high quality |
+| `turbo` | Pollinations.ai | Fastest generation |
+| `kontext` | Pollinations.ai | Instruction-following edits |
+| `seedream` | Pollinations.ai | ByteDance — photorealistic |
+| `nanobanana` | Pollinations.ai | Gemini-powered — high detail |
 
-`preference` (`speed` / `quality`) only applies to the `hd` model. Pollinations models ignore it.
+`preference` (`speed` / `quality`) only applies to `hd`. Pollinations models ignore it.
 
 ---
 
 ## Pollinations Text Models
 
-Returned separately under `pollinations_models`. Pass the `key` as the `model` param to `/query` or `/chat`.
+Returned separately under `pollinations_models`. Defined in `POLLINATIONS_TEXT_MODELS_LIST` in `core.js`. Pass the `key` as the `model` param to `/query` or `/chat`.
 
-| Key | Label |
-|-----|-------|
-| `model-key` | Model Display Name |
+| Key | Label | Provider |
+|-----|-------|----------|
+| `pol-openai-fast` | Pollinations GPT-OSS | Pollinations.ai |
 
 ---
 
 ## Caching
 
-Text models cached for **5 minutes** per serverless instance. Falls back to last successful cache or a minimal default set if upstream is unreachable.
+Text models are cached for **5 minutes** (`MODELS_CACHE_TTL` in `core.js`) per serverless instance. Falls back to the last successful cache or a minimal default set if upstream is unreachable.

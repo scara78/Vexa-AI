@@ -3,6 +3,7 @@ const TOOLBAZ_PAGE_URL = "https://toolbaz.com/writer/chat-gpt-alternative";
 const TOKEN_URL = "https://data.toolbaz.com/token.php";
 const DEEPAI_URL = "https://api.deepai.org/api/text2img";
 const POLLINATIONS_MODEL_KEYS = ["pol-openai-fast"];
+const TALKAI_MODEL_KEYS = ["claude-3-haiku", "gemini-2.0-flash-lite", "deepseek-chat", "gpt-4.1-nano"];
 const HDRS = {
     "Referer": TOOLBAZ_PAGE_URL,
     "Origin": "https://toolbaz.com",
@@ -19,6 +20,8 @@ const POST_HDRS = {
     "Accept-Language": "en-US,en;q=0.9",
 };
 const HEALTH_PROBE = "Hi";
+const MODEL_CHECK_TIMEOUT = 10000;
+const MAX_MODELS_TO_CHECK = 100;
 
 function randomString(n) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -69,12 +72,19 @@ async function checkModel(model, request) {
         const queryUrl = new URL('/query', request.url);
         queryUrl.searchParams.set('q', HEALTH_PROBE);
         queryUrl.searchParams.set('model', model);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), MODEL_CHECK_TIMEOUT);
+
         const r = await fetch(queryUrl.toString(), {
             method: 'GET',
             headers: {
                 'User-Agent': UA
-            }
+            },
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (!r.ok) {
             throw new Error(`Query endpoint error ${r.status}`);
@@ -87,7 +97,7 @@ async function checkModel(model, request) {
 
         return { ok: true, latency_ms: Date.now() - t0 };
     } catch (e) {
-        return { ok: false, error: e.message, latency_ms: Date.now() - t0 };
+        return { ok: false, error: e.message || 'Timeout', latency_ms: Date.now() - t0 };
     }
 }
 
@@ -149,25 +159,39 @@ export async function onRequest({ request }) {
     }
 
     const tStart = Date.now();
-    const allModels = [...await fetchAvailableModels(request), POLLINATIONS_MODEL_KEYS[0]];
+    const scrapedModels = await fetchAvailableModels(request);
+    const priorityModels = ['vexa', POLLINATIONS_MODEL_KEYS[0], ...TALKAI_MODEL_KEYS];
+    const remainingSlots = MAX_MODELS_TO_CHECK - priorityModels.length;
+    const additionalModels = scrapedModels
+        .filter(m => !priorityModels.includes(m))
+        .slice(0, Math.max(0, remainingSlots));
+    const checkedSet = new Set([...priorityModels, ...additionalModels]);
+    const allModels = [...priorityModels, ...additionalModels, ...scrapedModels.filter(m => !checkedSet.has(m))];
+
+    const modelsToCheck = allModels.slice(0, MAX_MODELS_TO_CHECK);
 
     const [page, token, image, ...modelResults] = await Promise.all([
         checkPage(),
         checkToken(),
         checkImage(),
-        ...allModels.map(m => checkModel(m, request)),
+        ...modelsToCheck.map(m => checkModel(m, request)),
     ]);
 
     const models = {};
-    for (let i = 0; i < allModels.length; i++) {
-        models[allModels[i]] = modelResults[i];
+    for (let i = 0; i < modelsToCheck.length; i++) {
+        models[modelsToCheck[i]] = modelResults[i];
     }
+
+    for (const m of allModels.slice(MAX_MODELS_TO_CHECK)) {
+        models[m] = { ok: null, error: 'Skipped - too many models', latency_ms: 0 };
+    }
+
     const polResult = models[POLLINATIONS_MODEL_KEYS[0]];
     for (const key of POLLINATIONS_MODEL_KEYS.slice(1)) {
         models[key] = polResult;
     }
 
-    const baseModels = allModels.filter(m => !POLLINATIONS_MODEL_KEYS.slice(1).includes(m));
+    const baseModels = modelsToCheck.filter(m => !POLLINATIONS_MODEL_KEYS.slice(1).includes(m));
     const failedModels = baseModels.filter((m, i) => !modelResults[baseModels.indexOf(m)] && !modelResults[i].ok);
     const polFailed = polResult && !polResult.ok;
     const allModelsOk = failedModels.length === 0 && !polFailed;

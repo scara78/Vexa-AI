@@ -4,6 +4,8 @@ Generate images via DeepAI (HD model) or Pollinations.ai (Flux, Turbo, Kontext, 
 
 All generated images are served through a proxy. The upstream URL is never exposed to the client.
 
+Model sets, preferences, URLs, and key generation are all defined in `core.js`.
+
 ```
 GET  /image
 POST /image
@@ -32,23 +34,16 @@ POST /image
 | `seedream` | Pollinations.ai | ByteDance — photorealistic |
 | `nanobanana` | Pollinations.ai | Gemini-powered — high detail |
 
-`preference` only applies to `hd`. Pollinations models always generate at 1024×1024 with a random seed.
+`preference` only applies to `hd`. Pollinations models always generate at 1024x1024 with a random seed.
 
 ---
 
 ## GET
 
 ```bash
-# Default HD model, speed preference
 curl "/image?q=a+sunset+over+mountains"
-
-# HD with quality preference
 curl "/image?q=a+portrait+of+a+knight&preference=quality"
-
-# Pollinations Flux
 curl "/image?q=a+neon+city&model=flux"
-
-# Pollinations Seedream
 curl "/image?q=a+realistic+portrait&model=seedream"
 ```
 
@@ -59,10 +54,7 @@ curl "/image?q=a+realistic+portrait&model=seedream"
 ```bash
 curl -X POST /image \
   -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "a highly detailed fantasy castle on a cliff at sunset",
-    "model": "flux"
-  }'
+  -d '{"prompt": "a highly detailed fantasy castle on a cliff at sunset", "model": "flux"}'
 ```
 
 ---
@@ -119,7 +111,7 @@ document.body.appendChild(img);
 GET /image/proxy/:id
 ```
 
-Fetches and streams the image from the upstream source without revealing the origin URL. Returns image bytes with the appropriate `Content-Type` header.
+Fetches and streams the image from the upstream source without revealing the origin URL. Returns image bytes with the appropriate `Content-Type` header. Proxy IDs are stored in `proxyCache` (exported from `core.js`).
 
 ---
 
@@ -131,6 +123,6 @@ Fetches and streams the image from the upstream source without revealing the ori
 | `400` | `Invalid JSON body` | Malformed POST body |
 | `400` | `Invalid model` | Unknown model name |
 | `400` | `Invalid preference` | Unknown preference value (HD only) |
-| `429` | `Rate limit exceeded` | More than 10 requests / IP / 60s |
+| `429` | `Rate limit exceeded` | Too many requests |
 | `502` | `Generation failed: ...` | Upstream error |
 | `404` | `Image not found` | Proxy ID expired or invalid |
