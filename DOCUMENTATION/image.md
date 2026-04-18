@@ -45,6 +45,21 @@ Use `proxy_url` as an `<img src>` or pass it to a download. See [`/image/proxy/:
 
 ---
 
+## Image Models
+
+| Model | Provider | Notes |
+|-------|----------|-------|
+| `hd` | DeepAI | Respects `preference` (`speed` / `quality`) |
+| `flux` | Pollinations | `preference` ignored |
+| `turbo-img` | Pollinations | `preference` ignored |
+| `kontext` | Pollinations | `preference` ignored |
+| `seedream` | Pollinations | `preference` ignored |
+| `nanobanana` | Pollinations | `preference` ignored |
+
+Always query [`/models?type=image`](./models.md) for the live list.
+
+---
+
 ## Examples
 
 ### GET
@@ -114,7 +129,7 @@ Returns `404` if the ID is not found or has expired.
 
 ## Proxy ID Behaviour
 
-Proxy IDs are SHA-256 hashes of the upstream image URL, truncated to 32 URL-safe characters.
+Proxy IDs are SHA-256 hashes of the upstream image URL, truncated to 32 URL-safe characters. For Pollinations models, this is the constructed request URL. For DeepAI (`hd`), it is the `output_url` returned in the generation response.
 
 **Storage depends on deployment:**
 
@@ -129,6 +144,6 @@ In production on Cloudflare Pages, bind a KV namespace to `PROXY_CACHE` to get p
 
 ## Notes
 
-- The `preference` field (`speed` / `quality`) is only present in the `/image` response for the `hd` model. Pollinations models (`flux`, `kontext`, `seedream`, `nanobanana`, `turbo`) omit it entirely.
-- Prompt is silently truncated to 1,000 characters before generation.
+- The `preference` field (`speed` / `quality`) only appears in `/image` responses for the `hd` model. All Pollinations models (`flux`, `turbo-img`, `kontext`, `seedream`, `nanobanana`) omit it entirely.
+- Prompts are silently truncated to 1,000 characters before generation.
 - If `model` is not a valid image model name, returns `502` with a message listing valid values.

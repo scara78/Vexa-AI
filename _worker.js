@@ -6,12 +6,18 @@ import { onRequest as handleImage } from "./functions/image.js";
 import { onRequest as handleModels } from "./functions/models.js";
 import { onRequest as handleQuery } from "./functions/query.js";
 
+import "./providers/deepai.js";
+import "./providers/talkai.js";
+import "./providers/dolphin.js";
+import "./providers/pollinations.js";
+import "./providers/aifree.js";
+import "./providers/toolbaz.js";
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Route to appropriate function
     if (path === "/" || path === "") {
       return handleIndex({ request, env, ctx });
     } else if (path === "/chat") {
@@ -28,7 +34,6 @@ export default {
       return handleQuery({ request, env, ctx });
     }
 
-    // 404 for unknown routes
     return new Response(JSON.stringify({ success: false, error: "Not found" }), {
       status: 404,
       headers: { "Content-Type": "application/json" }

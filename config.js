@@ -9,6 +9,7 @@ export const API_URLS = {
     POLLINATIONS_IMAGE_URL: "https://image.pollinations.ai/prompt/",
     DOLPHIN_URL: "https://chat.dphn.ai/api/chat",
     TALKAI_URL: "https://talkai.info/chat/send/",
+    TALKAI_PAGE_URL: "https://talkai.info/chat/",
     AIFREE_NONCE_URL: "https://aifreeforever.com/api/chat-nonce",
     AIFREE_ANSWER_URL: "https://aifreeforever.com/api/generate-ai-answer"
 };
@@ -18,8 +19,7 @@ export const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
 export const MODEL_SETS = {
     POLLINATIONS_MODELS: new Set(["pol-openai-fast"]),
     DOLPHIN_MODELS: new Set(["dolphin-logical", "dolphin-creative", "dolphin-summarize", "dolphin-code-beginner", "dolphin-code-advanced"]),
-    DEEPAI_MODELS: new Set(["vexa", "gemini-2.5-flash-lite", "gpt-4.1-nano", "deepseek-v3.2", "llama-3.3-70b", "llama-3.1-8b", "llama-4-scout", "qwen3-30b", "gpt-5-nano", "gpt-oss-120b", "dolphin-logical", "dolphin-creative", "dolphin-summarize", "dolphin-code-beginner", "dolphin-code-advanced", "claude-3-haiku", "gemini-2.0-flash-lite", "deepseek-chat"]),
-    TALKAI_MODELS: new Set(["claude-3-haiku", "gemini-2.0-flash-lite", "deepseek-chat", "gpt-4.1-nano"]),
+    DEEPAI_MODELS: new Set(["vexa"]),
     DEEPAI_IMAGE_MODELS: new Set(["hd"]),
     POLLINATIONS_IMAGE_MODELS: new Set(["flux", "turbo-img", "kontext", "seedream", "nanobanana"])
 };
@@ -32,33 +32,10 @@ export const MODEL_MAPPINGS = {
         "dolphin-code-beginner": "code_beginner",
         "dolphin-code-advanced": "code_advanced"
     },
-    TALKAI_MODEL_IDS: {
-        "claude-3-haiku": "claude-3-haiku-20240307",
-        "gemini-2.0-flash-lite": "gemini-2.0-flash-lite",
-        "deepseek-chat": "deepseek-chat",
-        "gpt-4.1-nano": "gpt-4.1-nano"
-    }
-};
-
-export const DEEPAI_MODEL_OVERRIDES = {
-    "vexa": { label: "Vexa", provider: "vexa-ai", speed: 0, quality: 0 },
-    "dolphin-logical": { label: "Dolphin 24B (Logical)", provider: "Dolphin AI", speed: 300, quality: 78 },
-    "dolphin-creative": { label: "Dolphin 24B (Creative)", provider: "Dolphin AI", speed: 300, quality: 76 },
-    "dolphin-summarize": { label: "Dolphin 24B (Summarize)", provider: "Dolphin AI", speed: 300, quality: 75 },
-    "dolphin-code-beginner": { label: "Dolphin 24B (Code Beginner)", provider: "Dolphin AI", speed: 300, quality: 74 },
-    "dolphin-code-advanced": { label: "Dolphin 24B (Code Advanced)", provider: "Dolphin AI", speed: 280, quality: 79 },
-    "gemini-2.5-flash-lite": { label: "Gemini 2.5 Flash Lite", provider: "Google", speed: 180, quality: 72 },
-    "gpt-4.1-nano": { label: "GPT-4.1 Nano", provider: "OpenAI", speed: 320, quality: 70 },
-    "deepseek-v3.2": { label: "DeepSeek V3.2", provider: "DeepSeek", speed: 280, quality: 81 },
-    "llama-3.3-70b": { label: "Llama 3.3 70B Instruct", provider: "Facebook (Meta)", speed: 250, quality: 78 },
-    "llama-3.1-8b": { label: "Llama 3.1 8B Instant", provider: "Facebook (Meta)", speed: 400, quality: 65 },
-    "llama-4-scout": { label: "Llama 4 Scout", provider: "Facebook (Meta)", speed: 300, quality: 76 },
-    "qwen3-30b": { label: "Qwen3 30B", provider: "Alibaba", speed: 260, quality: 77 },
-    "gpt-5-nano": { label: "GPT-5 Nano", provider: "OpenAI", speed: 350, quality: 74 },
-    "gpt-oss-120b": { label: "GPT OSS 120B", provider: "OpenAI", speed: 200, quality: 80 },
-    "claude-3-haiku": { label: "Claude 3 Haiku", provider: "Anthropic", speed: 310, quality: 74 },
-    "gemini-2.0-flash-lite": { label: "Gemini 2.0 Flash-Lite", provider: "Google", speed: 340, quality: 71 },
-    "deepseek-chat": { label: "DeepSeek V3", provider: "DeepSeek", speed: 280, quality: 80 },
+    DEEPAI_MODEL_MAP: {
+        "qwen3-30b": "qwen3-30b-a3b"
+    },
+    TALKAI_MODEL_IDS: {}
 };
 
 export const IMAGE_MODELS = [
@@ -71,26 +48,7 @@ export const IMAGE_MODELS = [
 ];
 
 export const TEXT_MODELS = {
-    DeepAI: [
-        { name: "vexa", label: "Vexa", provider: "vexa-ai", description: "Vexa AI - default" },
-        { name: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", provider: "Google", description: "Google's fast lightweight model" },
-        { name: "gpt-4.1-nano", label: "GPT-4.1 Nano", provider: "OpenAI", description: "OpenAI's compact GPT-4.1" },
-        { name: "deepseek-v3.2", label: "DeepSeek V3.2", provider: "DeepSeek", description: "DeepSeek's advanced reasoning" },
-        { name: "llama-3.3-70b", label: "Llama 3.3 70B Instruct", provider: "Facebook (Meta)", description: "Meta's large instruction model" },
-        { name: "llama-3.1-8b", label: "Llama 3.1 8B Instant", provider: "Facebook (Meta)", description: "Meta's fast lightweight model" },
-        { name: "llama-4-scout", label: "Llama 4 Scout", provider: "Facebook (Meta)", description: "Meta's next-gen model" },
-        { name: "qwen3-30b", label: "Qwen3 30B", provider: "Alibaba", description: "Alibaba's balanced model" },
-        { name: "gpt-5-nano", label: "GPT-5 Nano", provider: "OpenAI", description: "OpenAI's next-gen compact" },
-        { name: "gpt-oss-120b", label: "GPT OSS 120B", provider: "OpenAI", description: "OpenAI's large open-source" },
-        { name: "claude-3-haiku", label: "Claude 3 Haiku", provider: "Anthropic", description: "Anthropic's fast compact model" },
-        { name: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash-Lite", provider: "Google", description: "Google's ultra-fast model" },
-        { name: "deepseek-chat", label: "DeepSeek V3", provider: "DeepSeek", description: "DeepSeek's chat-optimized" },
-        { name: "dolphin-logical", label: "Dolphin 24B (Logical)", provider: "Dolphin AI", description: "Logical reasoning specialist" },
-        { name: "dolphin-creative", label: "Dolphin 24B (Creative)", provider: "Dolphin AI", description: "Creative writing specialist" },
-        { name: "dolphin-summarize", label: "Dolphin 24B (Summarize)", provider: "Dolphin AI", description: "Summarization specialist" },
-        { name: "dolphin-code-beginner", label: "Dolphin 24B (Code Beginner)", provider: "Dolphin AI", description: "Beginner code assistance" },
-        { name: "dolphin-code-advanced", label: "Dolphin 24B (Code Advanced)", provider: "Dolphin AI", description: "Advanced code assistance" },
-    ],
+    DeepAI: [],
     DolphinAI: [
         { name: "dolphin-logical", label: "Dolphin 24B (Logical)", provider: "Dolphin AI", description: "Logical reasoning specialist" },
         { name: "dolphin-creative", label: "Dolphin 24B (Creative)", provider: "Dolphin AI", description: "Creative writing specialist" },
@@ -101,29 +59,11 @@ export const TEXT_MODELS = {
     Pollinations: [
         { name: "pol-openai-fast", label: "Pollinations GPT-OSS", provider: "Pollinations.ai", description: "Open-source GPT alternative" },
     ],
+    TalkAI: [],
     AIFree: [
         { name: "gpt-5", label: "GPT-5", provider: "AIFree", description: "GPT-5 via AIFree" },
     ],
-    Toolbaz: [
-        { name: "toolbaz-v4.5-fast", label: "Toolbaz V4.5 Fast", provider: "Toolbaz", description: "Toolbaz fast model v4.5" },
-        { name: "deepseek-v3.1", label: "DeepSeek V3.1", provider: "DeepSeek", description: "DeepSeek V3.1 via Toolbaz" },
-        { name: "gemini-3-flash", label: "Gemini 3 Flash", provider: "Google", description: "Gemini 3 Flash via Toolbaz" },
-        { name: "L3-70B-Euryale-v2.1", label: "L3 70B Euryale v2.1", provider: "Meta", description: "Llama 3 70B Euryale via Toolbaz" },
-        { name: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", provider: "Google", description: "Gemini 3.1 Flash Lite via Toolbaz" },
-        { name: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google", description: "Gemini 2.5 Pro via Toolbaz" },
-        { name: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "Google", description: "Gemini 2.5 Flash via Toolbaz" },
-        { name: "deepseek-v3", label: "DeepSeek V3", provider: "DeepSeek", description: "DeepSeek V3 via Toolbaz" },
-        { name: "deepseek-r1", label: "DeepSeek R1", provider: "DeepSeek", description: "DeepSeek R1 reasoning via Toolbaz" },
-        { name: "gpt-5.2", label: "GPT-5.2", provider: "OpenAI", description: "GPT-5.2 via Toolbaz" },
-        { name: "o3-mini", label: "O3 Mini", provider: "OpenAI", description: "OpenAI O3 Mini via Toolbaz" },
-        { name: "gpt-4o-latest", label: "GPT-4O Latest", provider: "OpenAI", description: "GPT-4O Latest via Toolbaz" },
-        { name: "claude-sonnet-4", label: "Claude Sonnet 4", provider: "Anthropic", description: "Claude Sonnet 4 via Toolbaz" },
-        { name: "grok-4-fast", label: "Grok 4 Fast", provider: "xAI", description: "Grok 4 Fast via Toolbaz" },
-        { name: "toolbaz_v4", label: "Toolbaz V4", provider: "Toolbaz", description: "Toolbaz model v4" },
-        { name: "Llama-4-Maverick", label: "Llama 4 Maverick", provider: "Meta", description: "Llama 4 Maverick via Toolbaz" },
-        { name: "midnight-rose", label: "Midnight Rose", provider: "Toolbaz", description: "Midnight Rose via Toolbaz" },
-        { name: "unfiltered_x", label: "Unfiltered X", provider: "Toolbaz", description: "Unfiltered X via Toolbaz" },
-    ],
+    Toolbaz: [],
 };
 
 export const IMAGE_PREFERENCES = { speed: "turbo", quality: "quality" };
@@ -146,10 +86,10 @@ export const HEALTH_SETTINGS = {
 };
 
 export const PROVIDER_SETTINGS = {
-    toolbaz: false,
+    toolbaz: true,
     deepai: true,
     pollinations: true,
-    dolphin: false,
+    dolphin: true,
     talkai: true,
     aifree: true,
 };

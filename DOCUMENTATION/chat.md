@@ -2,7 +2,7 @@
 
 Multi-turn chat with full message history. **Always streams** via Server-Sent Events. There is no JSON response mode — do not call `.json()` on the response.
 
-**Method:** `POST`  
+**Method:** `POST`
 **Content-Type:** `application/json`
 
 ---
@@ -161,5 +161,22 @@ def chat(messages, model="vexa"):
 
 ## Notes
 
-- **History support varies by provider.** Models routed through DeepAI and Pollinations receive the full `messages` array including system prompts. TalkAI, Dolphin, and Toolbaz receive only the last `user` message. Check `text_models_by_provider` from [`/models`](./models.md) to identify which provider handles a given model.
-- If `model` is unrecognised or disabled, routing falls back to Toolbaz. If Toolbaz is also disabled, the request fails with a `502` inside the stream.
+**History and system prompt support varies by provider.** The table below reflects actual provider behaviour:
+
+| Provider | Full history | System prompt |
+|----------|:---:|:---:|
+| DeepAI | ✅ | ⚠️ |
+| Pollinations | ✅ | ✅ |
+| AIFree | ✅ partial | ✅ partial |
+| TalkAI | ❌ | ❌ |
+| Dolphin | ❌ | ❌ |
+| Toolbaz | ❌ | ❌ |
+
+- **DeepAI** forwards the full message array but coerces all roles to `"user"` or `"assistant"` — `"system"` messages are sent as `"user"` role internally.
+- **Pollinations** forwards the full `messages` array unmodified, including system role.
+- **AIFree** sends all messages except the final user turn as conversation history. System messages included if present in that slice.
+- **TalkAI, Dolphin, Toolbaz** receive only the last user message. System prompts and prior turns are ignored.
+
+Use `text_models_by_provider` from [`/models`](./models.md) to identify which provider handles a given model before building a stateful chat.
+
+If `model` is unrecognised or disabled, routing falls back to Toolbaz. If Toolbaz is also disabled, the request fails with a `502` inside the stream.

@@ -45,6 +45,21 @@ Every error across all endpoints follows this shape:
 
 ---
 
+## Providers
+
+Text models are sourced from multiple upstream providers. Not all providers support conversation history or system prompts — see [models.md](./models.md) for the full breakdown.
+
+| Provider | Source | History | System Prompt |
+|----------|--------|:-------:|:-------------:|
+| DeepAI | deepai.org | ✅ | ⚠️ sent as user role |
+| Pollinations | pollinations.ai | ✅ | ✅ |
+| AIFree | aifreeforever.com | ✅ partial | ✅ partial |
+| TalkAI | talkai.info | ❌ | ❌ |
+| Dolphin | dphn.ai | ❌ | ❌ |
+| Toolbaz | toolbaz.com | ❌ | ❌ |
+
+---
+
 ## Docs
 
 - [chat.md](./chat.md) — `/chat` streaming endpoint
@@ -53,3 +68,4 @@ Every error across all endpoints follows this shape:
 - [models.md](./models.md) — model listing, filtering, provider breakdown
 - [health.md](./health.md) — health check endpoint
 - [configuration.md](./configuration.md) — server-side config reference
+- [quick-start.md](./quick-start.md) — code examples for JS, Python, and Node.js

@@ -75,7 +75,7 @@ If the total model count exceeds `MAX_MODELS_TO_CHECK` (configured in `config.js
 | `page` | HEAD request to Toolbaz page — confirms provider reachability |
 | `token` | POST to token endpoint — confirms auth token generation works |
 | `image` | HEAD request to DeepAI image endpoint — confirms image generation is reachable |
-| `models` | Sends a short probe message to each enabled text model and checks for a non-empty string response |
+| `models` | Sends a short probe message (`"Hi"`) to each enabled text model and checks for a non-empty string response |
 
 ---
 

@@ -36,7 +36,51 @@ export async function onRequest({ request }) {
 
         if (type === "text" || !type) {
             response.text_models = includeDetails ? allModels.textModels : Object.keys(allModels.textModels);
-            response.text_models_by_provider = TEXT_MODELS;
+
+            const dynamicTextModelsByProvider = { ...TEXT_MODELS };
+
+            const talkaiModels = Object.entries(allModels.textModels)
+                .filter(([key, model]) => {
+                    return model.provider === "TalkAI" ||
+                        (typeof model.provider === 'string' && model.provider.toLowerCase().includes('talkai'));
+                })
+                .map(([key, model]) => ({
+                    name: key,
+                    label: model.label || key,
+                    provider: "TalkAI",
+                    description: model.description || `TalkAI - ${model.label || key}`
+                }));
+
+            dynamicTextModelsByProvider.TalkAI = talkaiModels;
+
+            const deepaiModels = Object.entries(allModels.textModels)
+                .filter(([key, model]) => model.provider === "DeepAI")
+                .map(([key, model]) => ({
+                    name: key,
+                    label: model.label || key,
+                    provider: "DeepAI",
+                    description: model.description || `DeepAI - ${model.label || key}`
+                }));
+
+            dynamicTextModelsByProvider.DeepAI = deepaiModels;
+
+            const toolbazModels = Object.entries(allModels.textModels)
+                .filter(([key, model]) => {
+                    const p = model.provider || "";
+                    return p !== "DeepAI" && p !== "Dolphin AI" && p !== "Pollinations.ai" &&
+                        p !== "AIFree" && p !== "TalkAI" &&
+                        !(typeof p === 'string' && p.toLowerCase().includes('talkai'));
+                })
+                .map(([key, model]) => ({
+                    name: key,
+                    label: model.label || key,
+                    provider: model.provider || "Toolbaz",
+                    description: model.description || `${model.provider || "Toolbaz"} - ${model.label || key}`
+                }));
+
+            dynamicTextModelsByProvider.Toolbaz = toolbazModels;
+
+            response.text_models_by_provider = dynamicTextModelsByProvider;
         }
 
         if (type === "image" || !type) {

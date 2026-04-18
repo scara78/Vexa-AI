@@ -88,7 +88,7 @@ const reply = await chat([
   { role: 'user', content: 'What is a JWT?' }
 ]);
 
-// With system prompt
+// With system prompt (only effective for DeepAI and Pollinations models)
 const reply2 = await chat([
   { role: 'system', content: 'You are a terse coding assistant.' },
   { role: 'user', content: 'What is a closure?' }
@@ -264,7 +264,9 @@ const { text_models, text_models_by_provider, defaults } = await fetch(
 
 console.log('Default model:', defaults.text);
 console.log('All text models:', text_models);
-console.log('By provider:', Object.keys(text_models_by_provider));
+// Bucket keys: DeepAI, TalkAI, Toolbaz
+// Check each model's .provider field for the actual upstream provider
+console.log('By bucket:', Object.keys(text_models_by_provider));
 ```
 
 Pass any model name in your request:
@@ -288,7 +290,7 @@ fetch('https://vexa-ai.pages.dev/chat', {
 });
 ```
 
-Not all models support conversation history and system prompts — models routed through DeepAI and Pollinations forward the full message array, others receive only the last user message. Check [`/models`](./models.md) for the provider breakdown.
+Not all models support conversation history and system prompts. See [`/models`](./models.md) for the full provider breakdown.
 
 ---
 
@@ -297,6 +299,8 @@ Not all models support conversation history and system prompts — models routed
 **Calling `.json()` on a `/chat` response** — `/chat` is SSE, not JSON. Always use a stream reader.
 
 **No `user` message in the array** — `/chat` requires at least one message with `role: "user"`. Missing it returns a `400` before the stream opens.
+
+**Expecting system prompts to work on all models** — only DeepAI and Pollinations models forward system messages. DeepAI coerces `system` role to `user` internally. TalkAI, Dolphin, and Toolbaz receive only the last user message and ignore everything else.
 
 **Using an expired proxy ID** — without a `PROXY_CACHE` KV binding, proxy IDs are in-memory and lost on restart. With KV bound, they persist for 24 hours. Either way, a missing ID returns `404`.
 

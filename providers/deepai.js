@@ -1,7 +1,8 @@
 import { UA, API_URLS, FORM_TEMPLATES } from "../config.js";
 import { generateImageKey, buildDeepAIImageBody } from "../lib/crypto.js";
+import { registerProvider } from "../lib/models.js";
 
-const { DEEPAI_API, DEEPAI_IMAGE_URL } = API_URLS;
+const { DEEPAI_API, DEEPAI_IMAGE_URL, DEEPAI_CHAT_URL } = API_URLS;
 
 export async function vexaComplete(prompt, messages, model = "standard") {
     const apiKey = await generateImageKey();
@@ -70,3 +71,31 @@ export async function callDeepAIImage(prompt, modelVer, prefKey) {
     if (!data.output_url) throw new Error(data.err || data.status || data.error || JSON.stringify(data));
     return data.output_url;
 }
+
+async function scrapeModels() {
+    const r = await fetch(DEEPAI_CHAT_URL, {
+        headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" }
+    });
+    if (!r.ok) return new Set();
+    const html = await r.text();
+
+    const match = html.match(/const additionalModels=(\[[\s\S]*?\]);/);
+    if (!match) return new Set();
+
+    const models = new Set();
+    for (const m of match[1].matchAll(/\{value:"([^"]+)"[^}]*locked:false/g)) {
+        models.add(m[1]);
+    }
+    models.add("vexa");
+    return models;
+}
+
+const deepaiProvider = {
+    id: "deepai",
+    source: "deepai.org",
+    scrapeModels,
+    complete: vexaComplete,
+    completeStream: vexaCompleteStream,
+};
+
+registerProvider(deepaiProvider);

@@ -26,8 +26,8 @@ To check current provider status without reading source, call `/models?details=t
 ## Defaults
 
 ```js
-export const DEFAULT_MODEL           = "vexa";
-export const DEFAULT_IMAGE_MODEL     = "hd";
+export const DEFAULT_MODEL            = "vexa";
+export const DEFAULT_IMAGE_MODEL      = "hd";
 export const DEFAULT_IMAGE_PREFERENCE = "speed";
 ```
 
@@ -57,7 +57,7 @@ export const CACHE_SETTINGS = {
 };
 ```
 
-After TTL expiry, the next request to `/models`, `/chat`, or `/query` triggers a background refresh. The cache is per-instance and does not persist across restarts.
+After TTL expiry, the next request to `/models`, `/chat`, or `/query` triggers a refresh. The cache is per-instance and does not persist across restarts.
 
 ---
 
@@ -72,7 +72,7 @@ export const IMAGE_PREFERENCES = {
 };
 ```
 
-Only the `hd` model uses this. Pollinations image models ignore `preference` entirely.
+Only the `hd` model uses this. All Pollinations image models ignore `preference` entirely.
 
 ---
 
@@ -85,6 +85,8 @@ export const IMAGE_GENERATION = {
   SEED_RANGE:     999999
 };
 ```
+
+Pollinations image requests use a random seed within `SEED_RANGE` on every generation.
 
 ---
 

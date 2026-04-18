@@ -86,5 +86,5 @@ print(data["response"])
 ## Notes
 
 - `/query` does not support conversation history. For multi-turn chat, use [`/chat`](./chat.md).
-- The prompt is passed as a single `user` message internally; no system prompt is applied.
+- The prompt is passed as a single `user` message internally. No system prompt is applied.
 - If `model` is unrecognised or disabled, routing falls back to Toolbaz. If Toolbaz is also disabled, returns `502`.
