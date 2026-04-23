@@ -10,12 +10,12 @@ Providers are enabled or disabled via `PROVIDER_SETTINGS`. Disabled providers ar
 
 ```js
 export const PROVIDER_SETTINGS = {
-  toolbaz:      false,
-  deepai:       true,
-  pollinations: true,
-  dolphin:      false,
-  talkai:       true,
-  aifree:       true,
+    toolbaz: true,
+    deepai: true,
+    pollinations: true,
+    dolphin: true,
+    talkai: true,
+    aifree: true,
 };
 ```
 

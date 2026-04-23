@@ -48,3 +48,50 @@ export async function dolphinCompleteStream(prompt, model, onChunk) {
         } catch (_) { }
     }
 }
+
+export async function dolphinVisualStream(prompt, imageUrl, template, onChunk) {
+    const r = await fetch(DOLPHIN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA, "Referer": "https://chat.dphn.ai/", "Origin": "https://chat.dphn.ai" },
+        body: JSON.stringify({
+            messages: [{
+                role: "user",
+                content: [
+                    { type: "text", text: prompt },
+                    { type: "image_url", image_url: { url: imageUrl } }
+                ]
+            }],
+            model: "dolphinserver:24B",
+            template: template || "summary"
+        }),
+    });
+    if (!r.ok) throw new Error(`Dolphin visual error ${r.status}`);
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+            const t = line.trim();
+            if (!t || t === "data: [DONE]") continue;
+            if (t.startsWith("data: ")) {
+                try {
+                    const obj = JSON.parse(t.slice(6));
+                    const chunk = obj.choices?.[0]?.delta?.content || "";
+                    if (chunk) onChunk(chunk);
+                } catch (_) { }
+            }
+        }
+    }
+    if (buf.trim().startsWith("data: ") && buf.trim() !== "data: [DONE]") {
+        try {
+            const obj = JSON.parse(buf.trim().slice(6));
+            const chunk = obj.choices?.[0]?.delta?.content || "";
+            if (chunk) onChunk(chunk);
+        } catch (_) { }
+    }
+}

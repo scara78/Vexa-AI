@@ -5,6 +5,7 @@ import { onRequest as handleImageProxy } from "./functions/image-proxy.js";
 import { onRequest as handleImage } from "./functions/image.js";
 import { onRequest as handleModels } from "./functions/models.js";
 import { onRequest as handleQuery } from "./functions/query.js";
+import { onRequest as handleVisual } from "./functions/visual.js";
 
 import "./providers/deepai.js";
 import "./providers/talkai.js";
@@ -41,6 +42,8 @@ export default {
       return handleModels({ request, env, ctx });
     } else if (path === "/query") {
       return handleQuery({ request, env, ctx });
+    } else if (path === "/visual") {
+      return handleVisual({ request, env, ctx });
     }
 
     return new Response(JSON.stringify({ success: false, error: "Not found" }), {

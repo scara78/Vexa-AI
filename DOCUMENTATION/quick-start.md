@@ -32,6 +32,8 @@ curl "https://vexa-ai.pages.dev/query?q=Hello"
 
 **Generating an image?** Use `/image` — GET or POST, returns a `proxy_url` you can drop straight into an `<img>` tag.
 
+**Analyzing an image?** Use `/visual` — POST only, accepts a URL, file upload, or base64. Returns plain JSON.
+
 ---
 
 ## JavaScript
@@ -152,6 +154,38 @@ if (!success) throw new Error(error);
 // Use proxy_url directly in <img src="...">
 ```
 
+### Image analysis
+
+```javascript
+// From a URL
+const res = await fetch('https://vexa-ai.pages.dev/visual', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompt: 'What is in this image?',
+    image_url: 'https://example.com/photo.jpg'
+  })
+});
+const { success, response, error } = await res.json();
+if (!success) throw new Error(error);
+console.log(response);
+
+// From a file input (<input type="file">)
+async function analyzeFile(file, prompt) {
+  const formData = new FormData();
+  formData.append('prompt', prompt);
+  formData.append('image', file);
+
+  const res = await fetch('https://vexa-ai.pages.dev/visual', {
+    method: 'POST',
+    body: formData
+  });
+  const { success, response, error } = await res.json();
+  if (!success) throw new Error(error);
+  return response;
+}
+```
+
 ---
 
 ## Python
@@ -212,6 +246,35 @@ data = res.json()
 if not data['success']:
     raise RuntimeError(data['error'])
 print(data['proxy_url'])
+```
+
+### Image analysis
+
+```python
+import requests
+
+# From a URL
+res = requests.post(
+    'https://vexa-ai.pages.dev/visual',
+    json={
+        'prompt': 'Describe what you see',
+        'image_url': 'https://example.com/photo.jpg',
+        'template': 'summary'
+    }
+)
+data = res.json()
+if not data['success']:
+    raise RuntimeError(data['error'])
+print(data['response'])
+
+# From a local file
+with open('/path/to/photo.jpg', 'rb') as f:
+    res = requests.post(
+        'https://vexa-ai.pages.dev/visual',
+        data={'prompt': 'Describe what you see', 'template': 'summary'},
+        files={'image': ('photo.jpg', f, 'image/jpeg')}
+    )
+print(res.json()['response'])
 ```
 
 ---
@@ -305,3 +368,5 @@ Not all models support conversation history and system prompts. See [`/models`](
 **Using an expired proxy ID** — without a `PROXY_CACHE` KV binding, proxy IDs are in-memory and lost on restart. With KV bound, they persist for 24 hours. Either way, a missing ID returns `404`.
 
 **Hardcoding model names** — models are scraped and updated dynamically. Fetch `/models` at startup and use the live list.
+
+**Sending a GET to `/visual`** — `/visual` is POST only. A GET returns `405`.

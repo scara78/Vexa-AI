@@ -2,7 +2,7 @@
 
 # Vexa AI API
 
-Multi-provider AI API for text and image generation. No API keys. No accounts.
+Multi-provider AI API for text, image generation, and visual analysis. No API keys. No accounts.
 
 **Base URL** — `https://vexa-ai.pages.dev`
 
@@ -18,6 +18,7 @@ All endpoints return `Access-Control-Allow-Origin: *`. Requests are rate-limited
 | `POST /chat` | POST | Multi-turn chat, always streams via SSE |
 | `GET /image` | GET, POST | Text-to-image generation |
 | `GET /image/proxy/:id` | GET | Serve a generated image by proxy ID |
+| `POST /visual` | POST | Analyze an image with Dolphin vision model |
 | `GET /models` | GET | List available models and defaults |
 | `GET /health` | GET | System and upstream provider status |
 
@@ -40,6 +41,7 @@ Every error across all endpoints follows this shape:
 | `400` | Missing or invalid parameters, malformed JSON |
 | `404` | Resource not found (e.g. expired proxy ID) |
 | `405` | Wrong HTTP method |
+| `413` | Payload too large (file upload exceeds 10 MB) |
 | `502` | Upstream provider failed |
 | `500` | Internal server error |
 
@@ -49,14 +51,14 @@ Every error across all endpoints follows this shape:
 
 Text models are sourced from multiple upstream providers. Not all providers support conversation history or system prompts — see [models.md](./models.md) for the full breakdown.
 
-| Provider | Source | History | System Prompt |
-|----------|--------|:-------:|:-------------:|
-| DeepAI | deepai.org | ✅ | ⚠️ sent as user role |
-| Pollinations | pollinations.ai | ✅ | ✅ |
-| AIFree | aifreeforever.com | ✅ partial | ✅ partial |
-| TalkAI | talkai.info | ❌ | ❌ |
-| Dolphin | dphn.ai | ❌ | ❌ |
-| Toolbaz | toolbaz.com | ❌ | ❌ |
+| Provider | Source | History | System Prompt | Vision |
+|----------|--------|:-------:|:-------------:|:------:|
+| DeepAI | deepai.org | ✅ | ⚠️ sent as user role | ❌ |
+| Pollinations | pollinations.ai | ✅ | ✅ | ❌ |
+| AIFree | aifreeforever.com | ✅ partial | ✅ partial | ❌ |
+| TalkAI | talkai.info | ❌ | ❌ | ❌ |
+| Dolphin | dphn.ai | ❌ | ❌ | ✅ |
+| Toolbaz | toolbaz.com | ❌ | ❌ | ❌ |
 
 ---
 
@@ -65,6 +67,7 @@ Text models are sourced from multiple upstream providers. Not all providers supp
 - [chat.md](./DOCUMENTATION/chat.md) — `/chat` streaming endpoint
 - [query.md](./DOCUMENTATION/query.md) — `/query` single-turn endpoint
 - [image.md](./DOCUMENTATION/image.md) — `/image` and `/image/proxy/:id`
+- [visual.md](./DOCUMENTATION/visual.md) — `/visual` image analysis endpoint
 - [models.md](./DOCUMENTATION/models.md) — model listing, filtering, provider breakdown
 - [health.md](./DOCUMENTATION/health.md) — health check endpoint
 - [configuration.md](./DOCUMENTATION/configuration.md) — server-side config reference

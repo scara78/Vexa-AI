@@ -90,7 +90,7 @@ export const PROVIDER_SETTINGS = {
     toolbaz: true,
     deepai: true,
     pollinations: true,
-    dolphin: false,
+    dolphin: true,
     talkai: true,
     aifree: true,
 };
