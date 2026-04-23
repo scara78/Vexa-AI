@@ -1,5 +1,5 @@
 import { DEFAULT_MODEL } from "../config.js";
-import { corsHeaders } from "../lib/utils.js";
+import { corsHeaders, cleanExcessiveBrTags } from "../lib/utils.js";
 import { resolveSource } from "../lib/models.js";
 import { completeWithAI } from "../lib/ai.js";
 
@@ -13,9 +13,18 @@ async function run(prompt, model) {
     try {
         const result = await completeWithAI(prompt, null, model);
         const actualModel = result.model || model;
-        return Response.json({ success: true, response: result.text, model: actualModel, elapsed_ms: Date.now() - t0, source: resolveSource(model) }, { status: 200, headers: corsHeaders() });
+        const cleanedResponse = cleanExcessiveBrTags(result.text);
+        return Response.json({ success: true, response: cleanedResponse, model: actualModel, elapsed_ms: Date.now() - t0, source: resolveSource(model) }, { status: 200, headers: corsHeaders() });
     } catch (e) {
-        return Response.json({ success: false, error: "Upstream request failed", detail: e.message }, { status: 502, headers: corsHeaders() });
+        console.error("Query error:", e);
+        return Response.json({
+            success: false,
+            error: "Upstream request failed",
+            detail: e.message,
+            stack: e.stack,
+            model: model,
+            prompt_length: prompt?.length
+        }, { status: 502, headers: corsHeaders() });
     }
 }
 

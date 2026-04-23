@@ -7,17 +7,23 @@ const { DEEPAI_API, DEEPAI_IMAGE_URL, DEEPAI_CHAT_URL } = API_URLS;
 export async function vexaComplete(prompt, messages, model = null) {
     const apiKey = await generateImageKey();
     const sessionUuid = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+    const sensitivityRequestId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+    const effectiveMessages = messages && messages.length > 0 ? messages : [{ role: "user", content: prompt }];
     const chatHistory = JSON.stringify(
-        messages.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }))
+        effectiveMessages.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }))
     );
-    const formData = new URLSearchParams({
+    const formDataParams = {
         chat_style: FORM_TEMPLATES.VEXA_CHAT_STYLE,
         chatHistory,
         model,
         session_uuid: sessionUuid,
+        sensitivity_request_id: sensitivityRequestId,
         hacker_is_stinky: "very_stinky",
         enabled_tools: FORM_TEMPLATES.VEXA_ENABLED_TOOLS,
-    });
+    };
+    console.log("DeepAI request params:", formDataParams);
+    const formData = new URLSearchParams(formDataParams);
+    console.log("DeepAI form data:", formData.toString());
     const resp = await fetch(`${DEEPAI_API}/hacking_is_a_serious_crime`, {
         method: "POST",
         headers: {
@@ -30,7 +36,11 @@ export async function vexaComplete(prompt, messages, model = null) {
         },
         body: formData.toString(),
     });
-    if (!resp.ok) throw new Error(`DeepAI error ${resp.status}`);
+    if (!resp.ok) {
+        const errorText = await resp.text();
+        console.error("DeepAI API error:", resp.status, errorText);
+        throw new Error(`DeepAI error ${resp.status}: ${errorText}`);
+    }
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let full = "";

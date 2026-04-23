@@ -21,7 +21,7 @@ export async function aiFreeComplete(prompt, messages) {
 
 export async function aiFreeCompleteStream(prompt, messages, onChunk) {
     const nonce = await getAiFreeNonce();
-    const history = messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+    const history = (messages || []).slice(0, -1).map(m => ({ role: m.role, content: m.content }));
     const body = {
         question: prompt,
         tone: FORM_TEMPLATES.AIFREE_TONE,
