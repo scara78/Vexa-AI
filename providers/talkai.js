@@ -47,7 +47,17 @@ export async function talkaiComplete(prompt, model) {
     await talkaiCompleteStream(prompt, model, (chunk) => {
         fullText += chunk;
     });
-    return cleanText(fullText.replace(/An internal server error occurred\.?/gi, "").trim());
+    return fullText
+        .replace(/An internal server error occurred\.?/gi, "")
+        .replace(/  \\n/g, "\n")
+        .replace(/\\n/g, "\n")
+        .split("\n")
+        .map(line => line
+            .replace(/ ([.,!?;:'])/g, "$1")
+            .trim()
+        )
+        .join("\n")
+        .trim();
 }
 
 export async function talkaiCompleteStream(prompt, model, onChunk) {
@@ -64,6 +74,7 @@ export async function talkaiCompleteStream(prompt, model, onChunk) {
     const decoder = new TextDecoder();
     let buf = "";
     let skipNext = false;
+    const tokens = [];
     while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -76,22 +87,32 @@ export async function talkaiCompleteStream(prompt, model, onChunk) {
             if (skipNext) { skipNext = false; continue; }
             const data = line.slice(5);
             if (!data.trim() || data.trim() === "[DONE]") continue;
-            const chars = data.split("");
-            for (const char of chars) {
-                onChunk(char);
-                await new Promise(r => setTimeout(r, 5));
-            }
+            tokens.push(data);
         }
     }
     if (buf.startsWith("data:") && !skipNext) {
         const data = buf.slice(5);
-        if (data.trim() && data.trim() !== "[DONE]") {
-            for (const char of data.split("")) {
-                onChunk(char);
-                await new Promise(r => setTimeout(r, 5));
-            }
-        }
+        if (data.trim() && data.trim() !== "[DONE]") tokens.push(data);
     }
+
+    let text = "";
+    for (const tok of tokens) {
+        if (tok.startsWith("   \\n")) { text += "\n"; continue; }
+        if (tok.startsWith("  ")) { text += " " + tok.trimStart(); continue; }
+        text += tok.trimStart();
+    }
+
+    text = text
+        .replace(/An internal server error occurred\.?/gi, "")
+        .split("\n")
+        .map(line => line
+            .replace(/ ([.,!?;:'])/g, "$1")
+            .replace(/([a-zA-Z]) ('s)/g, "$1$2")
+            .trim()
+        )
+        .join("\n")
+        .trim();
+    onChunk(text);
 }
 
 const talkaiProvider = {

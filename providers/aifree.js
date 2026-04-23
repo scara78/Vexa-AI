@@ -45,7 +45,8 @@ export async function aiFreeCompleteStream(prompt, messages, onChunk) {
     if (!r.ok) throw new Error(`AIFree error ${r.status}`);
     const j = await r.json();
     const text = j.answer || j.response || j.data?.answer || j.data?.response || JSON.stringify(j);
-    for (const char of text.split("")) {
+    const unescaped = text.replace(/\\n/g, "\n");
+    for (const char of unescaped.split("")) {
         onChunk(char);
         await new Promise(r => setTimeout(r, 5));
     }

@@ -45,18 +45,20 @@ export async function vexaComplete(prompt, messages, model = null) {
     let actualModel = model;
     try {
         const modelMatch = full.match(/model[:\s]+([\w-]+)/i);
-        if (modelMatch) {
-            actualModel = modelMatch[1];
-        }
-    } catch (e) {
-    }
+        if (modelMatch) actualModel = modelMatch[1];
+    } catch (e) { }
 
-    return { text: full.trim(), model: actualModel || model };
+    const cleaned = full.trim()
+        .replace(/  \r\n/g, "\n")
+        .replace(/  \n/g, "\n")
+        .replace(/\r\n/g, "\n")
+        .replace(/\\n/g, "\n");
+    return { text: cleaned, model: actualModel || model };
 }
 
 export async function vexaCompleteStream(prompt, messages, model, onChunk) {
     const result = await vexaComplete(prompt, messages, model);
-    const chunks = result.text.match(/.{1,4}/g) || [];
+    const chunks = result.text.match(/[\s\S]{1,4}/g) || [];
     for (const chunk of chunks) {
         onChunk(chunk, result.model);
         await new Promise(r => setTimeout(r, 10));

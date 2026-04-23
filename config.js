@@ -119,7 +119,7 @@ export const FORM_TEMPLATES = {
     VEXA_CHAT_STYLE: "chat",
     VEXA_ENABLED_TOOLS: JSON.stringify(["image_generator", "image_editor"]),
     AIFREE_TONE: "friendly",
-    AIFREE_FORMAT: "paragraph"
+    AIFREE_FORMAT: "default"
 };
 
 export const TEMPERATURE_SETTINGS = {
