@@ -1,4 +1,4 @@
-import { DEFAULT_IMAGE_MODEL, DEFAULT_IMAGE_PREFERENCE } from "../config.js"; 
+import { DEFAULT_IMAGE_MODEL, DEFAULT_IMAGE_PREFERENCE, MODEL_SETS } from "../config.js";
 import { corsHeaders } from "../lib/utils.js";
 import { resolveImageSource } from "../lib/models.js";
 import { generateImage } from "../lib/ai.js";
