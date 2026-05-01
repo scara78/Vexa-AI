@@ -6,6 +6,7 @@ import { onRequest as handleImage } from "./functions/image.js";
 import { onRequest as handleModels } from "./functions/models.js";
 import { onRequest as handleQuery } from "./functions/query.js";
 import { onRequest as handleVisual } from "./functions/visual.js";
+import { onRequest as handleOpenAI } from "./functions/openai.js";
 
 import "./providers/deepai.js";
 import "./providers/talkai.js";
@@ -24,11 +25,8 @@ export default {
     } else if (path === "/favicon.ico") {
       try {
         const faviconResponse = await env.ASSETS.fetch(new Request(request.url));
-        if (faviconResponse.ok) {
-          return faviconResponse;
-        }
-      } catch (e) {
-      }
+        if (faviconResponse.ok) return faviconResponse;
+      } catch (e) {}
       return new Response("", { status: 404 });
     } else if (path === "/chat") {
       return handleChat({ request, env, ctx });
@@ -44,6 +42,8 @@ export default {
       return handleQuery({ request, env, ctx });
     } else if (path === "/visual") {
       return handleVisual({ request, env, ctx });
+    } else if (path === "/v1/chat/completions") {
+      return handleOpenAI({ request, env, ctx });
     }
 
     return new Response(JSON.stringify({ success: false, error: "Not found" }), {

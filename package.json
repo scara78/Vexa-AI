@@ -2,10 +2,11 @@
   "name": "ai",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "functions/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node test.js"
+    "start": "node functions/index.js",
+    "sandbox": "wrangler dev"
   },
   "keywords": [],
   "author": "",
