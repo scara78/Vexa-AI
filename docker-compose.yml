@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  vexa-ai:
+    build: .
+    container_name: vexa-ai
+    ports:
+      - "8787:8787"
+    environment:
+      - NODE_ENV=production
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+    volumes:
+      - kv-data:/app/.wrangler/state
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  kv-data:

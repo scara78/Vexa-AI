@@ -47,6 +47,15 @@
 - Do **not** use `require()`. Use ES module `import`/`export` exclusively.
 - Do **not** use Node.js built-ins (`fs`, `path`, `crypto`, etc.). Use the Workers runtime globals (`crypto.subtle`, `fetch`, `URL`, `TextEncoder`, etc.).
 
+### Docker / EasyPanel Deployment
+- The app runs via `wrangler dev --local` inside Docker — **no Cloudflare account required** for self-hosting.
+- The Dockerfile installs `wrangler` globally and starts the dev server on port `8787` bound to `0.0.0.0`.
+- KV state is persisted in a named Docker volume (`kv-data`) mounted at `/app/.wrangler/state`.
+- In EasyPanel: create a new service → **Docker Compose** → paste `docker-compose.yml`. Set env vars from `.env.example` if needed.
+- To deploy to Cloudflare instead (not Docker), run `wrangler deploy` with valid `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.
+- Do **not** run `wrangler dev` without `--local` in Docker — it requires interactive auth.
+- Health check endpoint is `/health` — EasyPanel should use `http://localhost:8787/health` as the health probe URL.
+
 ### Security
 - Never log or expose API keys, tokens, or secrets in responses.
 - Sanitize/truncate all user-supplied prompt input before forwarding to providers (see `String(prompt).trim().slice(0, 1000)` pattern in `lib/ai.js`).
