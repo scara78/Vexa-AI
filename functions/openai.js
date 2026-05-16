@@ -74,8 +74,8 @@ export async function onRequest({ request }) {
     }
 
     if (request.method !== "POST") {
-        return Response.json(
-            { error: { message: "Method not allowed", type: "invalid_request_error" } },
+        return new Response(
+            JSON.stringify({ error: { message: "Method not allowed", type: "invalid_request_error" } }),
             { status: 405, headers: corsHeaders("POST, OPTIONS") }
         );
     }
@@ -83,8 +83,8 @@ export async function onRequest({ request }) {
     let body;
     try { body = await request.json(); }
     catch (_) {
-        return Response.json(
-            { error: { message: "Invalid JSON body", type: "invalid_request_error" } },
+        return new Response(
+            JSON.stringify({ error: { message: "Invalid JSON body", type: "invalid_request_error" } }),
             { status: 400, headers: corsHeaders("POST, OPTIONS") }
         );
     }
@@ -93,8 +93,8 @@ export async function onRequest({ request }) {
 
     const validationError = validateMessages(messages);
     if (validationError) {
-        return Response.json(
-            { error: { message: validationError, type: "invalid_request_error" } },
+        return new Response(
+            JSON.stringify({ error: { message: validationError, type: "invalid_request_error" } }),
             { status: 400, headers: corsHeaders("POST, OPTIONS") }
         );
     }
@@ -109,7 +109,6 @@ export async function onRequest({ request }) {
 
         (async () => {
             try {
-                // Opening delta with role
                 const roleChunk = {
                     id: completionId,
                     object: "chat.completion.chunk",
@@ -123,15 +122,19 @@ export async function onRequest({ request }) {
                     await writer.write(encoder.encode(makeChunkEvent(completionId, model, chunk)));
                 });
 
-                // Stop chunk
                 await writer.write(encoder.encode(makeChunkEvent(completionId, model, "", "stop")));
                 await writer.write(encoder.encode("data: [DONE]\n\n"));
             } catch (e) {
-                const errChunk = JSON.stringify({
+                const errEvent = {
+                    id: completionId,
+                    object: "chat.completion.chunk",
+                    created: Math.floor(Date.now() / 1000),
+                    model,
+                    choices: [{ index: 0, delta: {}, finish_reason: "error" }],
                     error: { message: e.message, type: "upstream_error" },
-                    finish_reason: "error",
-                });
-                await writer.write(encoder.encode(`data: ${errChunk}\n\n`));
+                };
+                await writer.write(encoder.encode(`data: ${JSON.stringify(errEvent)}\n\n`));
+                await writer.write(encoder.encode("data: [DONE]\n\n"));
             } finally {
                 await writer.close();
             }
@@ -149,13 +152,20 @@ export async function onRequest({ request }) {
             if (chunkModel) actualModel = chunkModel;
         });
 
-        return Response.json(
-            makeFullResponse(completionId, actualModel, fullText.trim()),
+        if (!fullText || fullText.trim().length === 0) {
+            return new Response(
+                JSON.stringify({ error: { message: "Empty response from upstream provider", type: "upstream_error" } }),
+                { status: 502, headers: corsHeaders("POST, OPTIONS") }
+            );
+        }
+
+        return new Response(
+            JSON.stringify(makeFullResponse(completionId, actualModel, fullText.trim())),
             { status: 200, headers: corsHeaders("POST, OPTIONS") }
         );
     } catch (e) {
-        return Response.json(
-            { error: { message: e.message, type: "upstream_error" } },
+        return new Response(
+            JSON.stringify({ error: { message: e.message, type: "upstream_error" } }),
             { status: 502, headers: corsHeaders("POST, OPTIONS") }
         );
     }
