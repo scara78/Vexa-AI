@@ -8,7 +8,7 @@ function makeKV() {
     const store = new Map();
     return {
         async get(key) { return store.get(key) ?? null; },
-        async put(key, value) { store.set(key, value); },
+        async put(key, value, opts) { store.set(key, value); },
         async delete(key) { store.delete(key); },
     };
 }
@@ -24,44 +24,68 @@ const ctx = { waitUntil: () => {} };
 
 const server = createServer(async (req, res) => {
     try {
-        // Build full URL
         const host = req.headers.host || `localhost:${PORT}`;
         const url = `http://${host}${req.url}`;
 
-        // Read body
-        const chunks = [];
-        for await (const chunk of req) chunks.push(chunk);
-        const body = chunks.length > 0 ? Buffer.concat(chunks) : null;
+        // Read body for non-GET/HEAD
+        let body = null;
+        if (req.method !== "GET" && req.method !== "HEAD") {
+            const chunks = [];
+            for await (const chunk of req) chunks.push(chunk);
+            if (chunks.length > 0) body = Buffer.concat(chunks);
+        }
 
         // Build Web API Request
-        const init = {
-            method: req.method,
-            headers: req.headers,
-        };
-        if (body && body.length > 0) init.body = body;
+        const headers = new Headers();
+        for (const [key, val] of Object.entries(req.headers)) {
+            if (typeof val === "string") headers.set(key, val);
+            else if (Array.isArray(val)) val.forEach(v => headers.append(key, v));
+        }
+
+        const init = { method: req.method, headers };
+        if (body && body.length > 0) {
+            init.body = body;
+            init.duplex = "half";
+        }
 
         const request = new Request(url, init);
 
         // Dispatch to worker
         const response = await worker.fetch(request, env, ctx);
 
-        // Write status + headers
-        res.writeHead(response.status, Object.fromEntries(response.headers.entries()));
+        // Convert headers to plain object
+        const resHeaders = {};
+        response.headers.forEach((value, key) => {
+            resHeaders[key] = value;
+        });
 
-        // Stream body back
+        res.writeHead(response.status, resHeaders);
+
+        // Stream body
         if (response.body) {
             const reader = response.body.getReader();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                res.write(value);
-            }
+            const pump = async () => {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    if (!res.writableEnded) res.write(Buffer.from(value));
+                }
+            };
+            await pump();
+        } else {
+            // No body (e.g., 204 responses)
+            const text = await response.text();
+            if (text) res.write(text);
         }
         res.end();
     } catch (err) {
         console.error("Server error:", err);
-        if (!res.headersSent) res.writeHead(500);
-        res.end(JSON.stringify({ success: false, error: err.message }));
+        if (!res.headersSent) {
+            res.writeHead(500, { "Content-Type": "application/json" });
+        }
+        if (!res.writableEnded) {
+            res.end(JSON.stringify({ success: false, error: err.message }));
+        }
     }
 });
 
